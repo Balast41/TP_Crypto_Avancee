@@ -5,8 +5,6 @@
  * 
  */
 module TP_Crypto_Avancee {
-	requires jakarta.mail;
-	requires jakarta.activation;
 	requires org.eclipse.angus.mail;
 	requires org.eclipse.angus.activation;
 }

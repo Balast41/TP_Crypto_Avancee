@@ -19,9 +19,18 @@ import jakarta.mail.internet.MimeMultipart;
 
 public class SendMail {
 
-   public static String sendMail(String to, String from, String username, String password, String subject, String content, String[] attachmentPaths) {
+   public static String sendMail(Mail mail) {
    // Assuming you are sending email through Gmail SMTP.
       String host = "smtp.gmail.com";
+      //Old parameters with new mail
+      //String to, String from, String username, String password, String subject, String content, String[] attachmentPaths,String U, String V
+      String to= mail.getDestinataire();
+      String from= mail.getFrom();
+      String username=mail.getUsername();
+      String password=mail.getPassword();
+      String subject=mail.getObjet();
+      String content=mail.getMessage();
+      String[] attachmentPaths=mail.getPath();
 
       Properties props = new Properties();
       props.put("mail.smtp.auth", "true");
@@ -59,7 +68,6 @@ public class SendMail {
 
          // Now set the actual message
          messageBodyPart.setText(content);
-
          // Create a multipar message
          Multipart multipart = new MimeMultipart();
 
@@ -69,11 +77,13 @@ public class SendMail {
          // Add each attachment as its own body part.
          if (attachmentPaths != null){
             for (int i = 0; i < attachmentPaths.length; i++) {
+               String[] parts = attachmentPaths[i].split("\\\\");
+               String filen = parts[parts.length - 1];
                String filename = attachmentPaths[i];
                BodyPart attachmentPart = new MimeBodyPart();
                DataSource source = new FileDataSource(filename);
                attachmentPart.setDataHandler(new DataHandler(source));
-               attachmentPart.setFileName(filename);
+               attachmentPart.setFileName(filen);
                multipart.addBodyPart(attachmentPart);
             }
          }
@@ -94,7 +104,7 @@ public class SendMail {
       
    }
 public static void main(String[] args) {
-   sendMail("qbalazot@gmail.com", "qbalazot@gmail.com", "qbalazot@gmail.com", "yqvi txzx srtu csye", "Objet Test", "This is message body", new String[]{"C:\\Users\\Quentin\\Documents\\BraeSync.txt", "C:\\Users\\Quentin\\Pictures\\PlayboiCartiStandingGoat.webp"});
+
 
    }
     
