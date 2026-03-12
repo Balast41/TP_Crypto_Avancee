@@ -1,0 +1,10 @@
+/**
+ * 
+ */
+/**
+ * 
+ */
+module TP_Crypto_Avancee {
+	requires org.eclipse.angus.mail;
+	requires org.eclipse.angus.activation;
+}
