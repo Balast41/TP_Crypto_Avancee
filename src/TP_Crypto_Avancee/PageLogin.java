@@ -96,6 +96,8 @@ public class PageLogin extends JFrame
         });
 
         add(envoyerButton, BorderLayout.SOUTH);
+        setSize(400, 150); // width x height in pixels
+        setLocationRelativeTo(null); // center it
     }
-    };
+    }
 

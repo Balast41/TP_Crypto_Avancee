@@ -24,8 +24,10 @@ public class HttpServeurAutorite {
     private static RSATunnelKey authRSA; 
     private static String data;
     private static String codeClient;
+    private static String codeClient2FA;
+    private static OffsetTime expirationCode2FA;
     private static String emailAutorite="autorite.autoreply@gmail.com";
-    private static String passwordAutorite="jiri tivz iqdf fwus";
+    private static String passwordAutorite="ajbv mfmd pgyq lgzd";
     private static List<List<String>> tableau_users= new ArrayList<>();
 
     public static void main(String[] args) {
@@ -91,8 +93,8 @@ public class HttpServeurAutorite {
                             Code2FA code2FA = new Code2FA("0", null);
                             code2FA.setCode();
                             code2FA.setExpirationTime();
-                            code = code2FA.getCode();
-                            expirationDate = code2FA.getExpirationTime();
+                            codeClient2FA = code2FA.getCode();
+                            expirationCode2FA = code2FA.getExpirationTime();
                             String message= "Votre code de validation pour l'authentification à deux facteurs est : \n\n" + code + "\n\n Ce code est valide pour une seule utilisation et expire dans 10 minutes.";
                             Mail mailCode=new Mail(destinataire,emailAutorite,emailAutorite,passwordAutorite,"Code de Validation pour 2FA",message,null);
                             SendMail.sendMail(mailCode);
@@ -102,7 +104,8 @@ public class HttpServeurAutorite {
                         else if (commande.equals("VERIF_CODE")) {
                             String email = cmdParts[1];
                             String codeRecu = cmdParts[2];
-                            if (code.equals(codeRecu) && java.time.OffsetTime.now().isBefore(expirationDate)) {
+                            System.out.println("Vérification du code 2FA pour " + email);
+                            if (codeClient2FA.equals(codeRecu) && java.time.OffsetTime.now().isBefore(expirationCode2FA)) {
                                 System.out.println("Code 2FA valide pour " + email);
 
                                 System.out.println("Action : Génération de la clé IBE pour " + email);
