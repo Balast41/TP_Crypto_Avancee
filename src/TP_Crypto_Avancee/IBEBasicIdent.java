@@ -62,7 +62,7 @@ public class IBEBasicIdent {
     }
     
         public static IBEcipher IBEGlobalKey(Element p_pub, Element generator, String pk)throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException{
-        Pairing pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("C:\\Users\\Quentin\\Documents\\jpbc-2.0.0\\params\\curves\\a.properties");
+        Pairing pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
         
         Element aeskey=pairing.getGT().newRandomElement(); //choix de la clef symmetrique AES
         

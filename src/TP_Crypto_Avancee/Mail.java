@@ -1,6 +1,6 @@
 package TP_Crypto_Avancee;
 
-
+import java.util.Date;
 import java.util.Arrays;
 
 public class Mail {
@@ -11,6 +11,7 @@ public class Mail {
     private String password;
     private String objet;
     private String message;
+    private Date date;
     private String[] path;
 
     public Mail() {}
@@ -23,6 +24,7 @@ public class Mail {
         this.password = password;
         this.objet = objet;
         this.message = message;
+        this.date = new Date();
         this.path = path;
     }
 
@@ -93,6 +95,14 @@ public class Mail {
         this.path = path;
     }
 
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
     @Override
     public String toString() {
         return "Mail {\n" +
@@ -102,6 +112,7 @@ public class Mail {
                 "  password='" + password + "',\n" +
                 "  objet='" + objet + "',\n" +
                 "  message='" + message + "',\n" +
+                "  date=" + date + ",\n" +
                 "  path=" + Arrays.toString(path) + "\n" +
                 "}";
     }

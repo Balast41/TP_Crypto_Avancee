@@ -70,6 +70,7 @@ public class FetchingEmail {
             Message message = filteredMessages[i];
             System.out.println("---------------------------------");
             Mail mail = new Mail();
+            mail.setDate(message.getSentDate());
             writePart(message, attachmentList, mail);
             mails = Arrays.copyOf(mails, mails.length + 1);
             mails[mails.length - 1] = mail;

@@ -10,9 +10,10 @@ import java.net.*;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.security.SecureRandom;
 
-//Compilation : javac -cp ".:../../lib/jpbc-2.0.0/jars/*" TP_Crypto_Avancee/*.java (in CorrectionBasicIdentIBE !)
-//Execution : java -cp ".:../../lib/jpbc-2.0.0/jars/*" TP_Crypto_Avancee.HttpServeurAutorite
+//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
+//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpServeurAutorite
 
 public class HttpServeurAutorite {
     private static SettingParameters pp;
@@ -21,10 +22,12 @@ public class HttpServeurAutorite {
     private static RSATunnelKey authRSA; 
     private static String data;
     private static String codeClient;
+    private static String emailAutorite="autorite.autoreply@gmail.com";
+    private static String passwordAutorite="jiri tivz iqdf fwus";
 
     public static void main(String[] args) {
         try {
-            pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("C:\\Users\\Quentin\\Documents\\jpbc-2.0.0\\params\\curves\\a.properties");
+            pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
             pp = FluxMessagerieIBE.etape1_Autorite_Initialisation(pairing);
             msk = pp.getMsk();
             authRSA = FluxMessagerieIBE.generateRSAKeyPair();
@@ -36,43 +39,6 @@ public class HttpServeurAutorite {
             System.out.println("==================================================");
 
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-            server.createContext("/data", he -> {
-                try {
-                    String responseStr = "ERROR";
-                    String requestRaw = new String(he.getRequestBody().readAllBytes());
-
-                    System.out.println("\n[TRAFFIC ENTRANT] Nouveau paquet reçu :");
-                    System.out.println("------------------------------------------");
-                    
-                    // CAS 1 : Demande de clé publique serveur
-                    if (requestRaw.contains("DATA_SENT")) {
-                        System.out.println("Stocking Data :");
-                        data=requestRaw.split("DATA_SENT::SPLIT::")[1];
-                        System.out.println("Data stocked : "+ data);
-                        he.sendResponseHeaders(200, "Received the data".length());
-                        he.getResponseBody().write("Received the data".getBytes());
-                        he.getResponseBody().close();
-                        System.out.println("------------------------------------------");
-                        System.out.println("[TRAFFIC SORTANT] Data envoyée.");
-                    } 
-                    else if (requestRaw.contains("REQUEST_DATA")){
-                        System.out.println("Sending Data : ");
-                        //Message de la forme REQUEST_DATA::SPLIT::Public_key
-                        String public_key_str=requestRaw.split("::SPLIT::")[1];
-                        PublicKey public_key = decodeKey(public_key_str);
-                        //responseStr=FluxMessagerieIBE.encryptRSA(data.toString(),public_key);
-                        he.sendResponseHeaders(200, data.length());
-                        he.getResponseBody().write(data.getBytes());
-                        he.getResponseBody().close();
-                        System.out.println("------------------------------------------");
-                        System.out.println("[TRAFFIC SORTANT] Data envoyée.");
-                    }
-
-                }
-                catch (Exception e) { 
-                    System.err.println("[ERREUR] " + e.getMessage());
-                }
-            });
             server.createContext("/service", he -> {
                 
                 try {
@@ -91,13 +57,6 @@ public class HttpServeurAutorite {
                         System.out.println("Type : Handshake RSA");
                         responseStr = encodeKey(authRSA.getPublicKey());
                         System.out.println("Action : Envoi de ma clé publique au client.");
-                    } 
-                    // CAS 2 : Demande de paramètres PP
-                    else if (requestRaw.equals("REQ_PP")) {
-                        System.out.println("Type : Handshake IBE");
-                        responseStr = pp.getP().toString();
-                        
-                        System.out.println("Action : Envoi des paramètres publics (P).");
                     } 
                     // CAS 3 : Requête composite (Clé Client + Donnée chiffrée)
                     else if (requestRaw.contains("::SPLIT::")) {
@@ -121,6 +80,11 @@ public class HttpServeurAutorite {
                         String commande = cmdParts[0];
 
                         if (commande.equals("DEMANDE_CLE")) {
+                            SecureRandom random = new SecureRandom();
+                            int code = random.nextInt(100000,1000000);
+                            String message= "Votre code de validation pour l'authentification à deux facteurs est : \n\n" + code + "\n\n Ce code est valide pour une seule utilisation et expire dans 10 minutes.";
+                            Mail mailCode=new Mail(destinataire,emailAutorite,emailAutorite,passwordAutorite,"Code de Validation pour 2FA",message,null);
+                            SendMail.sendMail(mailCode);
                             responseStr = "CHALLENGE_ENVOYE";
                             System.out.println("Action : Validation mail simulée.");
                         } 
