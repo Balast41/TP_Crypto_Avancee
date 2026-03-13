@@ -1,5 +1,4 @@
-package TP_Crypto_Avancee.InterfaceGraphique;
-import TP_Crypto_Avancee.Mail;
+package TP_Crypto_Avancee;
 import java.awt.*;
 import java.util.List;
 import javax.swing.*;

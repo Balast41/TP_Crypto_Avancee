@@ -1,4 +1,4 @@
-package TP_Crypto_Avancee.InterfaceGraphique;
+package TP_Crypto_Avancee;
 import javax.swing.*;
 import java.awt.event.*;
 

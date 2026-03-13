@@ -1,9 +1,9 @@
 package TP_Crypto_Avancee;
-import TP_Crypto_Avancee.InterfaceGraphique.AppliMail;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+//javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:." -d . TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
     public class MainClient {
         private static User waitForLogin(PageLogin login) {
         while (login.isDisplayable()) {
@@ -15,7 +15,7 @@ import java.util.List;
         }
         return login.getUser();
     }
-    private static boolean waitForCode(PageCode code) {
+    private static boolean waitForCode(CodeLogin code) {
         while (code.isDisplayable()) {
             try {
                 Thread.sleep(100);
@@ -23,7 +23,7 @@ import java.util.List;
                 e.printStackTrace();
             }
         }
-        return code.isValidated();
+        return code.isConnected();
     }
     public static void main(String[] args) {
             PageLogin loginPage=new PageLogin();

@@ -1,4 +1,4 @@
-package TP_Crypto_Avancee.InterfaceGraphique;
+package TP_Crypto_Avancee;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -12,6 +12,8 @@ import jakarta.mail.NoSuchProviderException;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.search.FromStringTerm;
+import java.util.Properties;
+import jakarta.mail.AuthenticationFailedException;
 /**
  * Fenêtre de connexion demandant l'email et le mot de passe de l'utilisateur.
  */

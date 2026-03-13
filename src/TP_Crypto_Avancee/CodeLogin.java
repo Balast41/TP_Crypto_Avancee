@@ -1,4 +1,4 @@
-package TP_Crypto_Avancee.InterfaceGraphique;
+package TP_Crypto_Avancee;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -46,7 +46,7 @@ public class CodeLogin extends JFrame
 
                 // Ici, tu peux ajouter la logique de vérification des identifiants
                 // Par exemple, ouvrir la fenêtre de rédaction de mail si la connexion réussit
-                String resultVerifyingTheCode = client.VerifyingTheCode();
+                String resultVerifyingTheCode = client.VerifyingTheCode(code);
                 int i=0;
                 switch (resultVerifyingTheCode){
                     case "VRAI":
