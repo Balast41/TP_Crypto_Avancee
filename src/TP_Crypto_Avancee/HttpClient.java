@@ -10,7 +10,6 @@ import java.util.Scanner;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-
 //Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
 //Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpClientTest
 
@@ -50,11 +49,18 @@ public class HttpClient {
         System.out.println("Asking the IBE Key... Done.");
     }
 
-    public void VerifyingTheCode(String code){
+    public String VerifyingTheCode(String code){
         String response= VerifyCodeAutority(code);
-        System.out.println("Sending the code... Done.");
+        if (response.equals("CODE_2FA_INVALIDE")){
+            return "FAUX";
+        }
+        if (response.equals("CODE_2FA_EXPIRE")){
+            return "EXPIRE";
+        }
+        System.out.println("Sending the code... Done and Accepted.");
         decryption_IBE_key(response);
         System.out.println("Got the IBE Key");
+        return "VRAI";
     }
 
 
@@ -205,7 +211,7 @@ public class HttpClient {
         }      
     }
 
-    public static Mail DecryptAMail(Mail mail){
+    private static Mail DecryptAMail(Mail mail){
         try{
                 System.out.println("Récupération de data :");
                 String[] parts=mail.getMessage().split("::KEY::");
@@ -281,6 +287,7 @@ public class HttpClient {
             return mail;
         }    
     }
+
     public static Mail[] getAllMails(String host, String mailStoreType, String username, String password, String senderFilter, int NumberOfMail){
                 Mail[] mailsFetch = FetchingEmail.fetch(host, mailStoreType, username, password, senderFilter, 1);
                 Mail[] mails= new Mail[mailsFetch.length];

@@ -1,10 +1,8 @@
 package TP_Crypto_Avancee.InterfaceGraphique;
-import javax.swing.*;
-
-package TP_Crypto_Avancee.InterfaceGraphique.Mail;
-
+import TP_Crypto_Avancee.Mail;
 import java.awt.*;
 import java.util.List;
+import javax.swing.*;
 
 public class AppliMail {
 

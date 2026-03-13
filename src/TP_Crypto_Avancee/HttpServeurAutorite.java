@@ -11,8 +11,10 @@ import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.security.SecureRandom;
+import java.time.*;
+import java.util.*;
 
-//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
+//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" -d . TPJavaMail/TP_Crypto_Avancee/**/*.java
 //Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpServeurAutorite
 
 public class HttpServeurAutorite {
@@ -24,6 +26,7 @@ public class HttpServeurAutorite {
     private static String codeClient;
     private static String emailAutorite="autorite.autoreply@gmail.com";
     private static String passwordAutorite="jiri tivz iqdf fwus";
+    private static List<List<String>> tableau_users= new ArrayList<>();
 
     public static void main(String[] args) {
         try {
@@ -78,10 +81,18 @@ public class HttpServeurAutorite {
 
                         String[] cmdParts = decryptedReq.split("\\|");
                         String commande = cmdParts[0];
+                        String code = null;
+                        OffsetTime expirationDate = null;
+
+                        tableau_users.add(new ArrayList<>(List.of(cmdParts[1], codeClient, commande)));
 
                         if (commande.equals("DEMANDE_CLE")) {
-                            SecureRandom random = new SecureRandom();
-                            int code = random.nextInt(100000,1000000);
+                            String destinataire=cmdParts[1];
+                            Code2FA code2FA = new Code2FA("0", null);
+                            code2FA.setCode();
+                            code2FA.setExpirationTime();
+                            code = code2FA.getCode();
+                            expirationDate = code2FA.getExpirationTime();
                             String message= "Votre code de validation pour l'authentification à deux facteurs est : \n\n" + code + "\n\n Ce code est valide pour une seule utilisation et expire dans 10 minutes.";
                             Mail mailCode=new Mail(destinataire,emailAutorite,emailAutorite,passwordAutorite,"Code de Validation pour 2FA",message,null);
                             SendMail.sendMail(mailCode);
@@ -90,17 +101,32 @@ public class HttpServeurAutorite {
                         } 
                         else if (commande.equals("VERIF_CODE")) {
                             String email = cmdParts[1];
-                            System.out.println("Action : Génération de la clé IBE pour " + email);
+                            String codeRecu = cmdParts[2];
+                            if (code.equals(codeRecu) && java.time.OffsetTime.now().isBefore(expirationDate)) {
+                                System.out.println("Code 2FA valide pour " + email);
+
+                                System.out.println("Action : Génération de la clé IBE pour " + email);
                             
-                            KeyPair ibeKey = FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email);
-                            String skStr = Base64.getEncoder().encodeToString(ibeKey.getSk().toBytes());
+                                KeyPair ibeKey = FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email);
+                                String skStr = Base64.getEncoder().encodeToString(ibeKey.getSk().toBytes());
+                                
+                                System.out.println("[CRYPTO] Clé IBE brute (Base64) : " + skStr.substring(0, 30) + "...");
+                                
+                                // CHIFFREMENT DE LA RÉPONSE
+                                PublicKey clientPub = decodeKey(clientPubKeyStr);
+                                responseStr = FluxMessagerieIBE.encryptRSA(skStr+"::SPLIT::"+codeClient, clientPub);
+                                System.out.println("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr.substring(0, 50) + "...");
+
+                            } else {
+                                if (!code.equals(codeRecu)) {
+                                    System.out.println("Code 2FA invalide pour " + email);
+                                    responseStr = "CODE_2FA_INVALIDE";
+                                } else if (java.time.OffsetTime.now().isAfter(expirationDate)) {
+                                    System.out.println("Code 2FA expiré pour " + email);
+                                    responseStr = "CODE_2FA_EXPIRE";
+                                }
+                            }
                             
-                            System.out.println("[CRYPTO] Clé IBE brute (Base64) : " + skStr.substring(0, 30) + "...");
-                            
-                            // CHIFFREMENT DE LA RÉPONSE
-                            PublicKey clientPub = decodeKey(clientPubKeyStr);
-                            responseStr = FluxMessagerieIBE.encryptRSA(skStr+"::SPLIT::"+codeClient, clientPub);
-                            System.out.println("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr.substring(0, 50) + "...");
                         }
                     }
 
