@@ -6,17 +6,16 @@ import TP_Crypto_Avancee.RSATunnelKey;
 import TP_Crypto_Avancee.SettingParameters;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.net.*;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
-import java.security.SecureRandom;
 import java.time.*;
 import java.util.*;
+import java.lang.*;
 
-//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" -d . TPJavaMail/TP_Crypto_Avancee/**/*.java
-//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpServeurAutorite
-
+//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:." -d . TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
+//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:." TP_Crypto_Avancee.HttpServeurAutorite
 public class HttpServeurAutorite {
     private static SettingParameters pp;
     private static Element msk;
@@ -29,7 +28,14 @@ public class HttpServeurAutorite {
     private static String emailAutorite="autorite.autoreply@gmail.com";
     private static String passwordAutorite="ajbv mfmd pgyq lgzd";
     private static List<List<String>> tableau_users= new ArrayList<>();
+    // Verbose
+    private static boolean verbose=true;
 
+    private static void print(String message) {
+        if (verbose) {
+            System.out.println(message);
+        }
+    }
     public static void main(String[] args) {
         try {
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
@@ -37,11 +43,11 @@ public class HttpServeurAutorite {
             msk = pp.getMsk();
             authRSA = FluxMessagerieIBE.generateRSAKeyPair();
             
-            System.out.println("==================================================");
-            System.out.println("[INITIALISATION SERVEUR]");
-            System.out.println("Ma Clé Publique RSA (Base64) : " + encodeKey(authRSA.getPublicKey()));
-            System.out.println("Serveur prêt sur le port 8080...");
-            System.out.println("==================================================");
+            print("==================================================");
+            print("[INITIALISATION SERVEUR]");
+            print("Ma Clé Publique RSA (Base64) : " + encodeKey(authRSA.getPublicKey()));
+            print("Serveur prêt sur le port 8080...");
+            print("==================================================");
 
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
             server.createContext("/service", he -> {
@@ -50,82 +56,90 @@ public class HttpServeurAutorite {
                     String responseStr = "ERROR";
                     String requestRaw = new String(he.getRequestBody().readAllBytes());
 
-                    System.out.println("\n[TRAFFIC ENTRANT] Nouveau paquet reçu :");
-                    System.out.println("------------------------------------------");
+                    print("\n[TRAFFIC ENTRANT] Nouveau paquet reçu :");
+                    print("------------------------------------------");
                     // Cas 0 : Envoi de la pp
                     if (requestRaw.equals("SEND_PP")){
-                        System.out.println("Type : Envoi des paramètres publiques");
+                        print("Type : Envoi des paramètres publiques");
                         responseStr = "P:" + pp.getP() + "::SPLIT::PP:"+pp.getP_pub();
                     }
                     // CAS 1 : Demande de clé publique serveur
                     if (requestRaw.equals("REQ_AUTH_RSA")) {
-                        System.out.println("Type : Handshake RSA");
+                        print("Type : Handshake RSA");
                         responseStr = encodeKey(authRSA.getPublicKey());
-                        System.out.println("Action : Envoi de ma clé publique au client.");
+                        print("Action : Envoi de ma clé publique au client.");
                     } 
                     // CAS 3 : Requête composite (Clé Client + Donnée chiffrée)
                     else if (requestRaw.contains("::SPLIT::")) {
-                        System.out.println("Type : Requête Composite (Stateless)");
-                        System.out.println(requestRaw);
-                        String[] parts = requestRaw.split("::SPLIT::");
-                        System.out.println(parts);    
+                        String[] parts = requestRaw.split("::SPLIT::"); 
                         String clientPubKeyStr = parts[0];
                         String encryptedPayload = parts[1];
                         if (parts.length==3){
                             codeClient= parts[2];
                         }
-                        System.out.println("Clé Publique Client extraite (claire) : " + clientPubKeyStr.substring(0, 50) + "...");
-                        System.out.println("Payload chiffré reçu : " + encryptedPayload.substring(0, 50) + "...");
+                        print("Clé Publique Client extraite (claire) : " + clientPubKeyStr.substring(0, 50) + "...");
 
                         // DECHIFFREMENT
                         String decryptedReq = FluxMessagerieIBE.decryptRSA(encryptedPayload, authRSA.getPrivateKey());
-                        System.out.println("[CRYPTO] Payload déchiffré avec succès : " + decryptedReq);
 
                         String[] cmdParts = decryptedReq.split("\\|");
                         String commande = cmdParts[0];
                         String code = null;
                         OffsetTime expirationDate = null;
+                        boolean userExists = false;
+                        int index=-1;
 
-                        tableau_users.add(new ArrayList<>(List.of(cmdParts[1], codeClient, commande)));
+                        Code2FA code2FA = new Code2FA("0", null);
+                        for (List<String> user : tableau_users) {
+                            if (user.get(0).equals(cmdParts[1])) {
+                                userExists = true;
+                                index = tableau_users.indexOf(user);
+                                user.set(2, commande);
+                            }
+                        }
+                        if (index==-1){
+                            index=tableau_users.size();
+                        }
+                        if (!userExists) {
+                            tableau_users.add(new ArrayList<>(List.of(cmdParts[1], codeClient, commande, "", "", "", parts[0])));
+                        }
+                        
 
                         if (commande.equals("DEMANDE_CLE")) {
                             String destinataire=cmdParts[1];
-                            Code2FA code2FA = new Code2FA("0", null);
                             code2FA.setCode();
                             code2FA.setExpirationTime();
-                            codeClient2FA = code2FA.getCode();
-                            expirationCode2FA = code2FA.getExpirationTime();
-                            String message= "Votre code de validation pour l'authentification à deux facteurs est : \n\n" + code + "\n\n Ce code est valide pour une seule utilisation et expire dans 10 minutes.";
+                            tableau_users.get(index).set(3, code2FA.getCode());
+                            tableau_users.get(index).set(4, code2FA.getExpirationTime().toString());
+                            String message= "Votre code de validation pour l'authentification à deux facteurs est : \n\n" + tableau_users.get(index).get(3) + "\n\n Ce code est valide pour une seule utilisation et expire dans 10 minutes.";
                             Mail mailCode=new Mail(destinataire,emailAutorite,emailAutorite,passwordAutorite,"Code de Validation pour 2FA",message,null);
                             SendMail.sendMail(mailCode);
                             responseStr = "CHALLENGE_ENVOYE";
-                            System.out.println("Action : Validation mail simulée.");
                         } 
                         else if (commande.equals("VERIF_CODE")) {
                             String email = cmdParts[1];
                             String codeRecu = cmdParts[2];
-                            System.out.println("Vérification du code 2FA pour " + email);
-                            if (codeClient2FA.equals(codeRecu) && java.time.OffsetTime.now().isBefore(expirationCode2FA)) {
-                                System.out.println("Code 2FA valide pour " + email);
+                            print("Vérification du code 2FA pour " + email);
+                            if (tableau_users.get(index).get(3).equals(codeRecu) && java.time.OffsetTime.now().toString().compareTo(tableau_users.get(index).get(4)) < 0) {
+                                print("Code 2FA valide pour " + email);
 
-                                System.out.println("Action : Génération de la clé IBE pour " + email);
+                                print("Action : Génération de la clé IBE pour " + email);
                             
-                                KeyPair ibeKey = FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email);
-                                String skStr = Base64.getEncoder().encodeToString(ibeKey.getSk().toBytes());
+
+                                tableau_users.get(index).set(5, Base64.getEncoder().encodeToString(FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email).getSk().toBytes()));
                                 
-                                System.out.println("[CRYPTO] Clé IBE brute (Base64) : " + skStr.substring(0, 30) + "...");
+                                print("[CRYPTO] Clé IBE brute (Base64) : " + tableau_users.get(index).get(5).substring(0, 30) + "...");
                                 
                                 // CHIFFREMENT DE LA RÉPONSE
-                                PublicKey clientPub = decodeKey(clientPubKeyStr);
-                                responseStr = FluxMessagerieIBE.encryptRSA(skStr+"::SPLIT::"+codeClient, clientPub);
-                                System.out.println("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr.substring(0, 50) + "...");
+                                responseStr = FluxMessagerieIBE.encryptRSA(tableau_users.get(index).get(5)+"::SPLIT::"+tableau_users.get(index).get(1), decodeKey(tableau_users.get(index).get(6)));
+                                print("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr.substring(0, 50) + "...");
 
                             } else {
-                                if (!code.equals(codeRecu)) {
-                                    System.out.println("Code 2FA invalide pour " + email);
+                                if (!tableau_users.get(index).get(3).equals(codeRecu)) {
+                                    print("Code 2FA invalide pour " + email);
                                     responseStr = "CODE_2FA_INVALIDE";
-                                } else if (java.time.OffsetTime.now().isAfter(expirationDate)) {
-                                    System.out.println("Code 2FA expiré pour " + email);
+                                } else if (java.time.OffsetTime.now().toString().compareTo(tableau_users.get(index).get(4)) > 0) {
+                                    print("Code 2FA expiré pour " + email);
                                     responseStr = "CODE_2FA_EXPIRE";
                                 }
                             }
@@ -136,8 +150,8 @@ public class HttpServeurAutorite {
                     he.sendResponseHeaders(200, responseStr.length());
                     he.getResponseBody().write(responseStr.getBytes());
                     he.getResponseBody().close();
-                    System.out.println("------------------------------------------");
-                    System.out.println("[TRAFFIC SORTANT] Réponse envoyée.");
+                    print("------------------------------------------");
+                    print("[TRAFFIC SORTANT] Réponse envoyée.");
 
                 } catch (Exception e) { 
                     System.err.println("[ERREUR] " + e.getMessage());

@@ -16,6 +16,7 @@ import java.nio.file.Files;
 public class HttpClient {
     //Parameter to define by the client when creating the class
     private static String email;
+    private static String password;
     // Curves used
     private static Pairing pairing;
     // URL of the HTTP Server (Autority)
@@ -31,6 +32,16 @@ public class HttpClient {
     //Used to get the IBE Key 
     private static String internCodeIBE="123456";
     private static Element IBEKey;
+    // Verbose
+    private static boolean verbose=true;
+
+    public static String getEmail() {
+        return email;
+    }
+
+    public static String getPassword() {
+        return password;
+    }
 
     private static String PrivateVerificationCode() {
         Random random = new Random();
@@ -38,8 +49,8 @@ public class HttpClient {
         return String.format("%06d", chiffre); // Formate pour toujours avoir 6 chiffres avec des zéros devant
     }
 
-    public HttpClient(String email){
-        Setup(email);
+    public HttpClient(String email, String password) {
+        Setup(email, password);
         System.out.println("Setup client... Done.");
         RetrievePP();
         System.out.println("Retrieving the PP... Done.");
@@ -76,13 +87,21 @@ public class HttpClient {
         return KeyFactory.getInstance("RSA").generatePublic(new java.security.spec.X509EncodedKeySpec(Base64.getDecoder().decode(base64)));
     }
 
-    private void Setup(String email){
+    private static void print(String message) {
+        if (verbose) {
+            System.out.println(message);
+        }
+    }
+
+    private void Setup(String email, String password){
         try{
             url_service = new URL("http://127.0.0.1:8080/service");
             this.email=email;
+            this.password=password;
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
             myRSA = FluxMessagerieIBE.generateRSAKeyPair();
             myPubStr = Base64.getEncoder().encodeToString(myRSA.getPublicKey().getEncoded());
+            print(myPubStr);
             internCodeIBE=PrivateVerificationCode();
             } 
             catch (Exception e) { 
@@ -97,6 +116,7 @@ public class HttpClient {
             String PPText= new String(sendPost(url_service,"SEND_PP"));
             AutorityP = pairing.getG1().newElementFromBytes(PPText.split("::SPLIT::")[0].split("P:")[1].strip().split(",")[0].getBytes());
             AutorityPP = pairing.getG1().newElementFromBytes(PPText.split("::SPLIT::")[1].split("PP:")[1].strip().split(",")[0].getBytes());
+            print(PPText);
         } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
@@ -107,7 +127,7 @@ public class HttpClient {
         try{
         String RSAKeyStr=new String(sendPost(url_service, "REQ_AUTH_RSA"));
         authPub = decodeKey(RSAKeyStr);
-        
+        print("RSA Key of the Autority : " + RSAKeyStr);
         } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
@@ -141,6 +161,7 @@ public class HttpClient {
         String[] responsesBlock = FluxMessagerieIBE.decryptRSA(response, myRSA.getPrivateKey()).split("::SPLIT::");
         if (responsesBlock[1].strip().equals(internCodeIBE)){
             IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
+            print(IBEKey.toString());
         }
         else{
             System.out.println("Code secret non reconnu. Ca ne doit pas être l'autorité ! ");
@@ -154,11 +175,9 @@ public class HttpClient {
 
         public static void sendingAMail(Mail mail){
         try{
-                System.out.println(" On envoie des données");
                 SendMail.sendMail(mail);
                 // A chaque fois, le "message chiffré" est serializedCipher.getAescipher
                 // Important, il faut inclure à la fin du mail, ou via un auter moyen (donnée caché) le U et le V (serializedCipher.getU et serializedCipher.getV) pour que le destinataire puisse déchiffrer le mail
-                System.out.println("Data envoyé !");
                           } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
@@ -167,16 +186,16 @@ public class HttpClient {
 
     public static void sendingAMailCrypted(Mail mail){
         try{
-                System.out.println(" On envoie des données");
+                print(" On envoie des données");
                 IBEcipher AESKey = IBEBasicIdent.IBEGlobalKey(AutorityPP,AutorityP, mail.getDestinataire());
-                System.out.println("AESKey:"+AESKey.getAescipher().toString());
+                print("AESKey:"+AESKey.getAescipher().toString());
                 IBEcipher encryptedObject =
                     IBEBasicIdent.IBEencryption(AESKey,mail.getObjet().getBytes());
                 IBEcipher encryptedMessage =
                     IBEBasicIdent.IBEencryption(AESKey,mail.getMessage().getBytes());
-                System.out.println("Message avant : "+ mail.getMessage() + " \n Message après : " + encryptedMessage.getAescipher().toString());
+                print("Message avant : "+ mail.getMessage() + " \n Message après : " + encryptedMessage.getAescipher().toString());
                 String serializedCipher = IBECipherUtils.serializeIBECipher(encryptedMessage);
-                System.out.println("SerializedCipher:"+serializedCipher);
+                print("SerializedCipher:"+serializedCipher);
                 String[] pathArray= mail.getPath();
                 for(int i=0;i<mail.getPath().length;i++){
                     byte[] fichier = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(pathArray[i]));
@@ -204,7 +223,6 @@ public class HttpClient {
                 SendMail.sendMail(mail);
                 // A chaque fois, le "message chiffré" est serializedCipher.getAescipher
                 // Important, il faut inclure à la fin du mail, ou via un auter moyen (donnée caché) le U et le V (serializedCipher.getU et serializedCipher.getV) pour que le destinataire puisse déchiffrer le mail
-                System.out.println("Data envoyé !");
                           } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
@@ -213,18 +231,18 @@ public class HttpClient {
 
     private static Mail DecryptAMail(Mail mail){
         try{
-                System.out.println("Récupération de data :");
+                print("Récupération de data :");
                 String[] parts=mail.getMessage().split("::KEY::");
                 if (parts.length>1){
-                    System.out.println("Le mail est chiffré avec notre système, on le comprend ;)");
+                    print("Le mail est chiffré avec notre système, on le comprend ;)");
                 }
                 else{
-                    System.out.println("Le mail n'est pas chiffré avec notre truc, on ne le comprend pas :(");
+                    print("Le mail n'est pas chiffré avec notre truc, on ne le comprend pas :(");
                     return mail;
                 }
                 String encryptedMessageB64 = parts[0].trim();
                 if (encryptedMessageB64.startsWith("[")) {
-                    System.out.println("Payload legacy detecte ([B@...). Ce mail a ete chiffre avec l'ancien format et ne peut pas etre decode en Base64.");
+                    print("Payload legacy detecte ([B@...). Ce mail a ete chiffre avec l'ancien format et ne peut pas etre decode en Base64.");
                     return mail;
                 }
                 String[] keyParts = parts[1].split("::SPLIT::");
@@ -242,7 +260,7 @@ public class HttpClient {
                         cipherMessage
                 );
                 mail.setMessage(new String(MessageClair));
-                System.out.println("Message décrypté : "+ new String(MessageClair));
+                print("Message décrypté : "+ new String(MessageClair));
                 IBEcipher cipherObjet= new IBEcipher(U,V,Base64.getDecoder().decode(mail.getObjet()));
                 byte[] ObjetClair = IBEBasicIdent.IBEdecryption(
                         pairing,
@@ -251,7 +269,7 @@ public class HttpClient {
                         IBEKey,
                         cipherObjet
                 );
-                System.out.println("Objet décrypté : "+ new String(ObjetClair));
+                print("Objet décrypté : "+ new String(ObjetClair));
                 mail.setObjet(new String(ObjetClair));
                 String[] path= mail.getPath();
                 for (int i=0; i < path.length;i++){
@@ -265,9 +283,6 @@ public class HttpClient {
                             .replace(".enc","")
                             .replace("\uFEFF", "")
                             .trim();
-
-                    System.out.println("Ici : " + filen);
-
                     IBEcipher cipherNameFichier = new IBEcipher(
                             U,
                             V,
@@ -289,7 +304,7 @@ public class HttpClient {
     }
 
     public static Mail[] getAllMails(String host, String mailStoreType, String username, String password, String senderFilter, int NumberOfMail){
-                Mail[] mailsFetch = FetchingEmail.fetch(host, mailStoreType, username, password, senderFilter, 1);
+                Mail[] mailsFetch = FetchingEmail.fetch(host, mailStoreType, username, password, senderFilter, NumberOfMail);
                 Mail[] mails= new Mail[mailsFetch.length];
                 int i = 0;
                 for (Mail mail:mailsFetch){

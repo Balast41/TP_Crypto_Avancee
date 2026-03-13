@@ -4,6 +4,9 @@ import java.util.Arrays;
 import java.util.List;
 
 //javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:." -d . TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
+
+// java -cp ".:lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TP_Crypto_Avancee.MainClient
+
     public class MainClient {
         private static User waitForLogin(PageLogin login) {
         while (login.isDisplayable()) {
@@ -33,7 +36,7 @@ import java.util.List;
                 System.out.println("Login failed");
                 return;
             }
-            HttpClient client= new HttpClient("qbalazot@gmail.com");
+            HttpClient client= new HttpClient(user.getUsername(), user.getPassword());
             CodeLogin codePage=new CodeLogin(client);
             codePage.setVisible(true);
             boolean isCodeValid=waitForCode(codePage);
@@ -44,18 +47,13 @@ import java.util.List;
 
                 String host = "imap.gmail.com";// change 
                 String mailStoreType = "imaps";
-                String username = 
-                "qbalazot@gmail.com";// change accordingly
-                String password = "yqvi txzx srtu csye";// change accordingly
                 String senderFilter = "qbalazot@gmail.com";
-                Mail[] mails = client.getAllMails(host,mailStoreType,username,password,senderFilter,10);
-                for (Mail mail : mails) {
-                    System.out.println(mail.toString());
-                }
+                // yqvi txzx srtu csye
+                Mail[] mails = client.getAllMails(host,mailStoreType,client.getEmail(),client.getPassword(),senderFilter,10);
                 // Convertir le tableau en List<Mail>
                 List<Mail> listeMails = new ArrayList<>(Arrays.asList(mails));
                 // Création de l'application et affichage immédiat
-                new AppliMail(listeMails);
+                new AppliMail(listeMails, client);
     
     }
 }

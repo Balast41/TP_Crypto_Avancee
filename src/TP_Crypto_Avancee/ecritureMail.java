@@ -17,9 +17,11 @@ public class ecritureMail extends JFrame {
     private JTextField sujet;
     private JTextPane texte_mail;
     private File fichier_attache;
+    private HttpClient client;
 
-    public ecritureMail() {
+    public ecritureMail(HttpClient client) {
         super("Rédaction de mail");
+        this.client=client;
         setLayout(new BorderLayout());
 
         // panneau des en-têtes (destinataire + sujet)
@@ -84,10 +86,9 @@ public class ecritureMail extends JFrame {
         JButton b_envoyer = new JButton("Envoyer");
         b_envoyer.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                System.out.println("=== Mail envoyé ===");
-                System.out.println("À : " + destinataire.getText());
-                System.out.println("Sujet : " + sujet.getText());
-                System.out.println("Corps :\n" + texte_mail.getText());
+                // Regarder pour les fichiers + Rajouter une case "A chiffrer ?"
+                Mail mail= new Mail(destinataire.getText(),client.getEmail(),client.getEmail(),client.getPassword(),sujet.getText(),texte_mail.getText(), new String[0]);
+                client.sendingAMailCrypted(mail);
             }
         });
         add(b_envoyer, BorderLayout.SOUTH);

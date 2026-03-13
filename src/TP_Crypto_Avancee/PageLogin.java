@@ -79,14 +79,10 @@ public class PageLogin extends JFrame
             public void actionPerformed(ActionEvent e) {
                 String email = emailField.getText();
                 String mdp = new String(mdpField.getPassword()); // Récupère le mot de passe
-                System.out.println("=== Informations de connexion ===");
-                System.out.println("Email : " + email);
-                System.out.println("Mot de passe : " + mdp);
 
                 // Ici, tu peux ajouter la logique de vérification des identifiants
                 // Par exemple, ouvrir la fenêtre de rédaction de mail si la connexion réussit
                 if (checkConnection(email, mdp)) {
-                    System.out.println("Connexion réussie !");
                     user= new User(email,mdp);
                     dispose();
                 } else {

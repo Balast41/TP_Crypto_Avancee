@@ -76,12 +76,9 @@ public class IBEBasicIdent {
         
          Element pairingresult=pairing.pairing(Q_id, p_pub); //e(Q_id,P_pub) dans le slide du cours 
          
-         System.out.println("before pairing result:"+pairingresult); 
-         
        
          pairingresult.powZn(r);
         
-        System.out.println("after pairing result:"+pairingresult);
         
         byte[] V=Xor(aeskey.toBytes(), pairingresult.toBytes()); //K xor e(Q_id,P_pub)^r
 
@@ -112,12 +109,9 @@ public class IBEBasicIdent {
         
          Element pairingresult=pairing.pairing(Q_id, p_pub); //e(Q_id,P_pub) dans le slide du cours 
          
-         System.out.println("before pairing result:"+pairingresult); 
-         
        
          pairingresult.powZn(r);
         
-        System.out.println("after pairing result:"+pairingresult);
         
         byte[] V=Xor(aeskey.toBytes(), pairingresult.toBytes()); //K xor e(Q_id,P_pub)^r
         

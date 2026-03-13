@@ -53,6 +53,7 @@ public class CodeLogin extends JFrame
                         isConnected = true;
                         // fermer la fenêtre login
                         dispose();
+                        break;
 
                     case "FAUX":
                         i+=1;
@@ -62,10 +63,12 @@ public class CodeLogin extends JFrame
                             JOptionPane.showMessageDialog(null, "Nombre de tentatives dépassé !", "Erreur", JOptionPane.ERROR_MESSAGE);
                             dispose();
                         }
+                        break;
                     case "EXPIRE":
                         isConnected=false;
                         JOptionPane.showMessageDialog(null, "Délais expiré !", "Erreur", JOptionPane.ERROR_MESSAGE);
                         dispose();
+                        break;
                 }
             }
         });

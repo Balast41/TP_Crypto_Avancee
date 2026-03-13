@@ -5,7 +5,7 @@ import javax.swing.*;
 
 public class AppliMail {
 
-    public AppliMail(List<Mail> listeMails) {
+    public AppliMail(List<Mail> listeMails, HttpClient client) {
         // Création de la fenêtre principale
         JFrame frame = new JFrame("Application Mail");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -16,7 +16,7 @@ public class AppliMail {
         frame.add(panelListe, BorderLayout.CENTER);
 
         // Créer et ajouter ToolPanel
-        ToolPanel toolPanel = new ToolPanel(200, 800);
+        ToolPanel toolPanel = new ToolPanel(200, 800, client);
         frame.add(toolPanel, BorderLayout.WEST);
 
         // Affichage immédiat

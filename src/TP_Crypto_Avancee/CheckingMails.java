@@ -41,22 +41,14 @@ public class CheckingMails {
 
       // Count all messages in inbox
       int totalMessages = emailFolder.getMessageCount();
-      System.out.println("messages.length---" + totalMessages);
 
       // Filter only messages from a specific sender (or part of sender address)
       FromStringTerm fromTerm = new FromStringTerm(senderFilter);
       Message[] filteredMessages = emailFolder.search(fromTerm);
-      System.out.println("Mails matching sender filter '" + senderFilter + "': " + filteredMessages.length);
 
       int toDisplay = Math.min(MAX_RECENT_TO_DISPLAY, filteredMessages.length);
       for (int i = filteredMessages.length - 1, shown = 0; i >= 0 && shown < toDisplay; i--, shown++) {
          Message message = filteredMessages[i];
-         System.out.println("---------------------------------");
-         System.out.println("Email Number " + (shown + 1));
-         System.out.println("Subject: " + message.getSubject());
-         System.out.println("From: " + message.getFrom()[0]);
-         System.out.println("Text: " + message.getContent().toString());
-
       }
 
       //close the store and folder objects
@@ -71,17 +63,4 @@ public class CheckingMails {
          e.printStackTrace();
       }
    }
-
-   public static void main(String[] args) {
-
-      String host = "imap.gmail.com";// change accordingly
-      String mailStoreType = "imaps";
-      String username = "qbalazot@gmail.com";// change accordingly
-      String password = "yqvi txzx srtu csye";// change accordingly
-      String senderFilter = "qbalazot@gmail.com";// change accordingly
-
-      check(host, mailStoreType, username, password, senderFilter);
-
-   }
-
 }

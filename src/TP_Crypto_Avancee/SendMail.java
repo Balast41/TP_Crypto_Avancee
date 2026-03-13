@@ -95,7 +95,6 @@ public class SendMail {
          // Send message
          Transport.send(message);
 
-         System.out.println("Sent message successfully....");
          return "Mail sent successfully";
 
       } catch (MessagingException e) {

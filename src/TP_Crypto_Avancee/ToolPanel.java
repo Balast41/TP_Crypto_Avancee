@@ -7,10 +7,12 @@ import java.awt.*;
 public class ToolPanel extends JPanel
 {
     private int panelWidth;
+    private HttpClient client;
 
-    public ToolPanel(int panelWidth, int panelHeight)
+    public ToolPanel(int panelWidth, int panelHeight, HttpClient client)
     {
         // Variables
+        this.client=client;
         this.panelWidth = panelWidth;
 
         // Organisation Générale
@@ -57,7 +59,7 @@ public class ToolPanel extends JPanel
 
         // Ouvrir ecritureMail
         button.addActionListener((ActionEvent e) -> {
-            JFrame nouvelleFrame = new ecritureMail();
+            JFrame nouvelleFrame = new ecritureMail(client);
             nouvelleFrame.setSize(400, 400);
             nouvelleFrame.setLocationRelativeTo(null);
             nouvelleFrame.setVisible(true);
