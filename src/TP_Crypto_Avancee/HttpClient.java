@@ -5,13 +5,16 @@ import java.io.*;
 import java.net.*;
 import java.security.*;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 //Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
-//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpClientTest
+//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpClient
 
 public class HttpClient {
     //Parameter to define by the client when creating the class
@@ -34,6 +37,31 @@ public class HttpClient {
     private static Element IBEKey;
     // Verbose
     private static boolean verbose=true;
+    // Association nom de fichier chiffré <-> nom de fichier clair pour les PJ
+
+// Dans HttpClient.java (au début de la classe ou en haut des méthodes)
+private static class MailTechnicalData {
+    public String[] encryptedNames; // Ajoute 'public' pour être sûr
+    public String uB64;
+    public String vB64;
+
+    public MailTechnicalData(String[] names, String u, String v) {
+        this.encryptedNames = names;
+        this.uB64 = u;
+        this.vB64 = v;
+    }
+}
+
+    private static Map<String, MailTechnicalData> globalTranslationTable = new HashMap<>();
+
+
+
+
+    public String getHost() { return "imap.gmail.com"; }
+public String getUser() { return getEmail(); } // Utilise ton getEmail()
+public String getPass() { return getPassword(); } // Utilise ton getPassword()
+public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou mets getEmail()
+
 
     public static String getEmail() {
         return email;
@@ -50,6 +78,7 @@ public class HttpClient {
     }
 
     public HttpClient(String email, String password) {
+        print("Compilé 2");
         Setup(email, password);
         System.out.println("Setup client... Done.");
         RetrievePP();
@@ -101,7 +130,7 @@ public class HttpClient {
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
             myRSA = FluxMessagerieIBE.generateRSAKeyPair();
             myPubStr = Base64.getEncoder().encodeToString(myRSA.getPublicKey().getEncoded());
-            print(myPubStr);
+            print("myPubStr: " + myPubStr);
             internCodeIBE=PrivateVerificationCode();
             } 
             catch (Exception e) { 
@@ -158,14 +187,18 @@ public class HttpClient {
 
     private static void decryption_IBE_key(String response){
         try{
-        String[] responsesBlock = FluxMessagerieIBE.decryptRSA(response, myRSA.getPrivateKey()).split("::SPLIT::");
-        if (responsesBlock[1].strip().equals(internCodeIBE)){
-            IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
-            print(IBEKey.toString());
+        System.out.println("[CLIENT] Received Base64 Length: " + response.length());
+        System.out.println("[CLIENT] Received Base64 Prefix: " + response.substring(0, Math.min(10, response.length())));
+        print("response"+response);
+        if (response.equals("CODE_2FA_INVALIDE") || response.equals("CODE_2FA_EXPIRE")) {
+            System.out.println("Code de validation 2FA invalide ou expiré. Impossible d'obtenir la clé IBE.");
         }
         else{
-            System.out.println("Code secret non reconnu. Ca ne doit pas être l'autorité ! ");
-            return;
+            String[] responsesBlock = FluxMessagerieIBE.decryptRSA(response, myRSA.getPrivateKey()).split("::SPLIT::");
+            if (responsesBlock[1].strip().equals(internCodeIBE)){
+                IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
+                print("IBEKey: " + IBEKey.toString());
+            }
         }
                 } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
@@ -173,18 +206,20 @@ public class HttpClient {
         }
     }
 
-        public static void sendingAMail(Mail mail){
+        public static boolean sendingAMail(Mail mail){
         try{
                 SendMail.sendMail(mail);
+                return true;
                 // A chaque fois, le "message chiffré" est serializedCipher.getAescipher
                 // Important, il faut inclure à la fin du mail, ou via un auter moyen (donnée caché) le U et le V (serializedCipher.getU et serializedCipher.getV) pour que le destinataire puisse déchiffrer le mail
                           } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
-        }      
+        }    
+        return false;  
     }
 
-    public static void sendingAMailCrypted(Mail mail){
+    public static boolean sendingAMailCrypted(Mail mail){
         try{
                 print(" On envoie des données");
                 IBEcipher AESKey = IBEBasicIdent.IBEGlobalKey(AutorityPP,AutorityP, mail.getDestinataire());
@@ -221,97 +256,143 @@ public class HttpClient {
                 mail.setMessage(MessageEncrypte + "\n\n ::KEY:: U:" + encodedU + " \n ::SPLIT:: V:" + encodedV);
                 mail.setPath(pathArray);
                 SendMail.sendMail(mail);
+                return true;
                 // A chaque fois, le "message chiffré" est serializedCipher.getAescipher
                 // Important, il faut inclure à la fin du mail, ou via un auter moyen (donnée caché) le U et le V (serializedCipher.getU et serializedCipher.getV) pour que le destinataire puisse déchiffrer le mail
                           } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
         }      
+        return false;
     }
 
-    private static Mail DecryptAMail(Mail mail){
-        try{
-                print("Récupération de data :");
-                String[] parts=mail.getMessage().split("::KEY::");
-                if (parts.length>1){
-                    print("Le mail est chiffré avec notre système, on le comprend ;)");
-                }
-                else{
-                    print("Le mail n'est pas chiffré avec notre truc, on ne le comprend pas :(");
-                    return mail;
-                }
-                String encryptedMessageB64 = parts[0].trim();
-                if (encryptedMessageB64.startsWith("[")) {
-                    print("Payload legacy detecte ([B@...). Ce mail a ete chiffre avec l'ancien format et ne peut pas etre decode en Base64.");
-                    return mail;
-                }
-                String[] keyParts = parts[1].split("::SPLIT::");
-                String uB64 = keyParts[0].replace("U:", "").trim();
-                String vB64 = keyParts[1].replace("V:", "").trim();
-                Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(uB64));
-                byte[] V = Base64.getDecoder().decode(vB64);
-                //Message à déchiffrer
-                IBEcipher cipherMessage= new IBEcipher(U,V,Base64.getDecoder().decode(encryptedMessageB64));
-                byte[] MessageClair = IBEBasicIdent.IBEdecryption(
-                        pairing,
-                        AutorityP,
-                        AutorityPP,
-                        IBEKey,
-                        cipherMessage
-                );
-                mail.setMessage(new String(MessageClair));
-                print("Message décrypté : "+ new String(MessageClair));
-                IBEcipher cipherObjet= new IBEcipher(U,V,Base64.getDecoder().decode(mail.getObjet()));
-                byte[] ObjetClair = IBEBasicIdent.IBEdecryption(
-                        pairing,
-                        AutorityP,
-                        AutorityPP,
-                        IBEKey,
-                        cipherObjet
-                );
-                print("Objet décrypté : "+ new String(ObjetClair));
-                mail.setObjet(new String(ObjetClair));
-                String[] path= mail.getPath();
-                for (int i=0; i < path.length;i++){
-                    byte[] encryptedBytes = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path[i]));
+public static Mail decryptMailMetadata(Mail mail) {
+    try {
+        String content = mail.getMessage();
+        if (!content.contains("::KEY::")) return mail;
 
-                    // On recrée l'objet IBEcipher avec U et V connus-
-                    IBEcipher cipherFichier = new IBEcipher(U, V, encryptedBytes);
-                    byte[] FichierClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, cipherFichier);
-                    String[] partsFiles = path[i].split("[\\\\/]");
-                    String filen = partsFiles[partsFiles.length - 1]
-                            .replace(".enc","")
-                            .replace("\uFEFF", "")
-                            .trim();
-                    IBEcipher cipherNameFichier = new IBEcipher(
-                            U,
-                            V,
-                            Base64.getDecoder().decode(filen)
-                    );
-                    String Filename= new String(IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP,IBEKey,cipherNameFichier));
-                    Files.write(java.nio.file.Paths.get(Filename), FichierClair);
+        String[] parts = content.split("::KEY::");
+        String encryptedMessageB64 = parts[0].trim();
+        String[] keyParts = parts[1].split("::SPLIT::");
+        
+        String uB64 = keyParts[0].replace("U:", "").trim();
+        String vB64 = keyParts[1].replace("V:", "").trim();
 
-                    path[i] = Filename;
-                }
-                mail.setPath(path);
-                return mail;
-            }
-            catch (Exception e) { 
-            System.err.println("\n[ERREUR] " + e.getMessage());
-            e.printStackTrace();
-            return mail;
-        }    
-    }
+        // --- AJOUT : On sauvegarde les noms bruts et les clés avant déchiffrement ---
+        globalTranslationTable.put(mail.getId(), new MailTechnicalData(mail.getPath(), uB64, vB64));
 
-    public static Mail[] getAllMails(String host, String mailStoreType, String username, String password, String senderFilter, int NumberOfMail){
-                Mail[] mailsFetch = FetchingEmail.fetch(host, mailStoreType, username, password, senderFilter, NumberOfMail);
-                Mail[] mails= new Mail[mailsFetch.length];
-                int i = 0;
-                for (Mail mail:mailsFetch){
-                    Mail mailDechiffre=DecryptAMail(mail);
-                    mails[i]=mailDechiffre;
-                    i+=1;
-                }
-                return mails;
+        Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(uB64));
+        byte[] V = Base64.getDecoder().decode(vB64);
+
+        // 1. Décrypter le Message
+        byte[] msgClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
+                        new IBEcipher(U, V, Base64.getDecoder().decode(encryptedMessageB64)));
+        mail.setMessage(new String(msgClair));
+
+        // 2. Décrypter l'Objet
+        byte[] objClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
+                        new IBEcipher(U, V, Base64.getDecoder().decode(mail.getObjet())));
+        mail.setObjet(new String(objClair));
+
+        // 3. Décrypter les NOMS des fichiers
+        String[] encPaths = mail.getPath();
+        String[] decNames = new String[encPaths.length];
+        for (int i = 0; i < encPaths.length; i++) {
+            String cleanName = encPaths[i].replace(".enc", "").trim();
+            byte[] nameClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
+                            new IBEcipher(U, V, Base64.getDecoder().decode(cleanName)));
+            decNames[i] = new String(nameClair);
         }
+        mail.setPath(decNames);
+
+        return mail;
+    } catch (Exception e) {
+        return mail;
     }
+}
+
+    public static void downloadAndDecryptFile(String host, String user, String pass, String mailId, String encryptedFileName, String destinationPath) {
+        try {
+            // 1. On récupère le mail pour avoir U et V
+            Mail rawMail = FetchingEmail.getMail(host, user, pass, mailId);
+            String[] parts = rawMail.getMessage().split("::KEY::");
+            String[] keyParts = parts[1].split("::SPLIT::");
+            
+            Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(keyParts[0].replace("U:", "").trim()));
+            byte[] V = Base64.getDecoder().decode(keyParts[1].replace("V:", "").trim());
+
+            // 2. On télécharge les octets chiffrés en mémoire (ou fichier temporaire)
+            // Note: On utilise une version de download qui renvoie les bytes ou écrit en temporaire
+            File tempEncFile = File.createTempFile("enc_", ".tmp");
+            FetchingEmail.downloadSpecificFile(host, user, pass, mailId, encryptedFileName);
+
+            // 3. Décryptage du contenu
+            byte[] encryptedBytes = java.nio.file.Files.readAllBytes(tempEncFile.toPath());
+            IBEcipher cipherFichier = new IBEcipher(U, V, encryptedBytes);
+            byte[] fichierClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, cipherFichier);
+
+            // 4. Écriture finale
+            java.nio.file.Files.write(java.nio.file.Paths.get(destinationPath), fichierClair);
+            
+            tempEncFile.delete();
+            System.out.println("Fichier déchiffré et enregistré !");
+            
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public static Mail[] getAllMails(String host, String user, String pass, String filter, int n, boolean decrypt) {
+            List<Mail> mailsFetch = FetchingEmail.fetchLight(host, user, pass, filter, n);
+            
+            Mail[] result = new Mail[mailsFetch.size()];
+        // Dans HttpClient.java -> getAllMails
+        for (int i = 0; i < mailsFetch.size(); i++) {
+            Mail m = mailsFetch.get(i);
+            
+            // CORRECTION : On instancie l'objet technique au lieu de passer le tableau brut
+            globalTranslationTable.put(m.getId(), new MailTechnicalData(m.getPath(), null, null));
+
+            if (decrypt) {
+                result[i] = decryptMailMetadata(m);
+            } else {
+                result[i] = m;
+            }
+        }
+            return result;
+        }
+
+public void downloadFile(String host, String user, String pass, Mail currentMail, String displayName, String destPath) {
+    try {
+        String mailId = currentMail.getId();
+        MailTechnicalData techData = globalTranslationTable.get(mailId);
+        String realNameOnServer = displayName;
+
+        if (techData != null) {
+            String[] displayList = currentMail.getPath();
+            for (int i = 0; i < displayList.length; i++) {
+                if (displayList[i].equals(displayName)) {
+                    realNameOnServer = techData.encryptedNames[i];
+                    break;
+                }
+            }
+        }
+
+        System.out.println("Translation : " + displayName + " -> " + realNameOnServer);
+        byte[] data = FetchingEmail.downloadSpecificFile(host, user, pass, mailId, realNameOnServer);
+
+        if (data != null) {
+            // --- AJOUT : Déchiffrement du contenu du fichier ---
+            if (techData != null && techData.uB64 != null) {
+                Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(techData.uB64));
+                byte[] V = Base64.getDecoder().decode(techData.vB64);
+                
+                byte[] fichierClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
+                                    new IBEcipher(U, V, data));
+                java.nio.file.Files.write(java.nio.file.Paths.get(destPath), fichierClair);
+            } else {
+                java.nio.file.Files.write(java.nio.file.Paths.get(destPath), data);
+            }
+            System.out.println("Fichier enregistré vers : " + destPath);
+        }
+    } catch (Exception e) { e.printStackTrace(); }
+}
+}

@@ -1,5 +1,6 @@
 package TP_Crypto_Avancee;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -100,16 +101,23 @@ public static RSATunnelKey generateRSAKeyPair() throws Exception {
 }
 
     // Chiffrement avec une clé publique RSA
-    public static String encryptRSA(String data, PublicKey publicKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] encryptedBytes = cipher.doFinal(data.getBytes());
-        return Base64.getEncoder().encodeToString(encryptedBytes);
-    }
+public static String encryptRSA(String data, PublicKey publicKey) throws Exception {
+    Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+    cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+    byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+    
+    String base64Result = Base64.getEncoder().encodeToString(encryptedBytes);
+    
+    // DEBUG: Print length and first 10 chars
+    System.out.println("[SERVER] Encrypted Base64 Length: " + base64Result.length());
+    System.out.println("[SERVER] Encrypted Base64 Prefix: " + base64Result.substring(0, Math.min(10, base64Result.length())));
+    
+    return base64Result;
+}
 
     // Déchiffrement avec une clé privée RSA
     public static String decryptRSA(String encryptedData, PrivateKey privateKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("RSA");
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         byte[] decodedBytes = Base64.getDecoder().decode(encryptedData);
         byte[] decryptedBytes = cipher.doFinal(decodedBytes);

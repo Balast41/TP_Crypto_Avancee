@@ -37,6 +37,7 @@ public class HttpServeurAutorite {
         }
     }
     public static void main(String[] args) {
+        print("Compilé");
         try {
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
             pp = FluxMessagerieIBE.etape1_Autorite_Initialisation(pairing);
@@ -77,7 +78,7 @@ public class HttpServeurAutorite {
                         if (parts.length==3){
                             codeClient= parts[2];
                         }
-                        print("Clé Publique Client extraite (claire) : " + clientPubKeyStr.substring(0, 50) + "...");
+                        print("Clé Publique Client extraite (claire) : " + clientPubKeyStr + "...");
 
                         // DECHIFFREMENT
                         String decryptedReq = FluxMessagerieIBE.decryptRSA(encryptedPayload, authRSA.getPrivateKey());
@@ -124,7 +125,7 @@ public class HttpServeurAutorite {
                                 print("Code 2FA valide pour " + email);
 
                                 print("Action : Génération de la clé IBE pour " + email);
-                            
+                                print("RSA Public Key du client utilisée pour le chiffrement (Base64) : " + tableau_users.get(index).get(6).substring(0, 50) + "...");
 
                                 tableau_users.get(index).set(5, Base64.getEncoder().encodeToString(FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email).getSk().toBytes()));
                                 
@@ -132,7 +133,8 @@ public class HttpServeurAutorite {
                                 
                                 // CHIFFREMENT DE LA RÉPONSE
                                 responseStr = FluxMessagerieIBE.encryptRSA(tableau_users.get(index).get(5)+"::SPLIT::"+tableau_users.get(index).get(1), decodeKey(tableau_users.get(index).get(6)));
-                                print("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr.substring(0, 50) + "...");
+                                print("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr + "...");
+                                tableau_users.remove(index);
 
                             } else {
                                 if (!tableau_users.get(index).get(3).equals(codeRecu)) {
@@ -141,6 +143,7 @@ public class HttpServeurAutorite {
                                 } else if (java.time.OffsetTime.now().toString().compareTo(tableau_users.get(index).get(4)) > 0) {
                                     print("Code 2FA expiré pour " + email);
                                     responseStr = "CODE_2FA_EXPIRE";
+                                    tableau_users.remove(index);
                                 }
                             }
                             

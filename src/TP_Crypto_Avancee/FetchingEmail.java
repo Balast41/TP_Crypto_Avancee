@@ -1,194 +1,162 @@
 package TP_Crypto_Avancee;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import jakarta.mail.Address;
-import jakarta.mail.BodyPart;
-import jakarta.mail.Folder;
-import jakarta.mail.Message;
-import jakarta.mail.MessagingException;
-import jakarta.mail.Multipart;
-import jakarta.mail.NoSuchProviderException;
-import jakarta.mail.Part;
-import jakarta.mail.Session;
-import jakarta.mail.Store;
+import jakarta.mail.*;
+import com.sun.mail.imap.IMAPFolder;
 import jakarta.mail.search.FromStringTerm;
-import java.util.ArrayList;
 
 public class FetchingEmail {
 
-   private static final int MAX_RECENT_TO_DISPLAY = 10;
-   private static final String ATTACHMENTS_DIR = "attachments";
-
-   public static Mail[] fetch(String imapHost, String storeType, String user,
-      String password, String senderFilter, int nb) {
-      try {
-         List<String> attachmentList = new ArrayList<>();
-         Mail[] mails = new Mail[0];
-         // create properties field
-         Properties properties = new Properties();
-         properties.put("mail.store.protocol", "imaps");
-         properties.put("mail.imap.host", imapHost);
-         properties.put("mail.imap.port", "993");
-         properties.put("mail.imap.ssl.enable", "true");
-         Session emailSession = Session.getDefaultInstance(properties);
-         // emailSession.setDebug(true);
-
-         // create the IMAP store object and connect with the mail server
-         Store store = emailSession.getStore("imaps");
-
-         store.connect(imapHost, user, password);
-
-         // create the folder object and open it
-         Folder emailFolder = store.getFolder("INBOX");
-         emailFolder.open(Folder.READ_ONLY);
-
-         // Count all messages in inbox
-         int totalMessages = emailFolder.getMessageCount();
-
-         // Server-side filter: only messages from a specific sender
-         FromStringTerm fromTerm = new FromStringTerm(senderFilter);
-         Message[] filteredMessages = emailFolder.search(fromTerm);
-         // Display only a limited number of recent messages.
-         int maxByNb = nb > 0 ? Math.min(nb, filteredMessages.length) : filteredMessages.length;
-         int toDisplay = Math.min(MAX_RECENT_TO_DISPLAY, maxByNb);
-         int displayedCount = 0;
-         for (int i = filteredMessages.length - 1, shown = 0; i >= 0 && shown < toDisplay; i--, shown++) {
-            Message message = filteredMessages[i];
-            Mail mail = new Mail();
-            mail.setDate(message.getSentDate());
-            writePart(message, attachmentList, mail);
-            mails = Arrays.copyOf(mails, mails.length + 1);
-            mails[mails.length - 1] = mail;
-            displayedCount++;
-         }
-         // close the store and folder objects
-         emailFolder.close(false);
-         store.close();
-
-         return mails;
-
-      } catch (NoSuchProviderException e) {
-         e.printStackTrace();
-      } catch (MessagingException e) {
-         e.printStackTrace();
-      } catch (IOException e) {
-         e.printStackTrace();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      return null;
-   }
-   public static void main(String[] args) {
-      Mail mail= new Mail();
-      String host = "imap.gmail.com";// change accordingly
-      String mailStoreType = "imaps";
-      String username = 
-         "qbalazot@gmail.com";// change accordingly
-      String password = "yqvi txzx srtu csye";// change accordingly
-      String senderFilter = "qbalazot@gmail.com";// change accordingly
-
-      // Call method fetch and keep attachment paths in an array.
-      Mail[] mails = fetch(host, mailStoreType, username, password, senderFilter, 3);
-   }
-
-   /*
-   * This method checks for content-type 
-   * based on which, it processes and
-   * fetches the content of the message
-   */
-
-public static Mail writePart(Part p, List<String> attachmentList, Mail mail) throws Exception {
-    if (p instanceof Message)
-        writeEnvelope((Message) p, mail);
-
-    // Multipart
-    if (p.isMimeType("multipart/*")) {
-
-        Multipart mp = (Multipart) p.getContent();
-        int count = mp.getCount();
-
-        for (int i = 0; i < count; i++) {
-            BodyPart bodyPart = mp.getBodyPart(i);
-            writePart(bodyPart, attachmentList, mail);
-        }
+    // On récupère les propriétés IMAP standard
+    private static Properties getImapProperties(String host) {
+        Properties props = new Properties();
+        props.put("mail.store.protocol", "imaps");
+        props.put("mail.imap.host", host);
+        props.put("mail.imap.port", "993");
+        props.put("mail.imap.ssl.enable", "true");
+        return props;
     }
-    // Nested message
-    else if (p.isMimeType("message/rfc822")) {
-        writePart((Part) p.getContent(), attachmentList, mail);
-    }
-    // Attachments
-    else if (Part.ATTACHMENT.equalsIgnoreCase(p.getDisposition()) || p.getFileName() != null) {
 
-        String fileName = p.getFileName() != null ? p.getFileName() : "attachment.bin";
+    /**
+     * RÉCUPÉRATION LÉGÈRE : Objet, Message, Expéditeur, Destinataire + ID
+     */
+public static List<Mail> fetchLight(String host, String user, String password, String senderFilter, int numberOfMails) {
+    List<Mail> mailList = new ArrayList<>();
+    try {
+        Session session = Session.getInstance(getImapProperties(host));
+        Store store = session.getStore("imaps");
+        store.connect(host, user, password);
 
-        File dir = new File(ATTACHMENTS_DIR);
-        if (!dir.exists()) {
-            dir.mkdirs();
+        IMAPFolder inbox = (IMAPFolder) store.getFolder("INBOX");
+        inbox.open(Folder.READ_ONLY);
+
+        Message[] messages = (senderFilter != null && !senderFilter.isEmpty()) 
+                             ? inbox.search(new FromStringTerm(senderFilter)) 
+                             : inbox.getMessages();
+
+        int count = 0;
+        for (int i = messages.length - 1; i >= 0; i--) {
+            if (count >= numberOfMails) break;
+
+            Message msg = messages[i];
+            
+            // Extraction des noms de fichiers (sans télécharger le contenu)
+            List<String> attachments = new ArrayList<>();
+            if (msg.getContent() instanceof Multipart) {
+                Multipart mp = (Multipart) msg.getContent();
+                for (int j = 0; j < mp.getCount(); j++) {
+                    BodyPart bp = mp.getBodyPart(j);
+                    if (bp.getFileName() != null) {
+                        attachments.add(bp.getFileName());
+                    }
+                }
+            }
+
+            String from = (msg.getFrom() != null) ? msg.getFrom()[0].toString() : "Inconnu";
+            String to = (msg.getRecipients(Message.RecipientType.TO) != null) 
+                        ? msg.getRecipients(Message.RecipientType.TO)[0].toString() : "Inconnu";
+            
+            Mail mail = new Mail(to, from, msg.getSubject(), getTextFromPart(msg));
+            mail.setId(String.valueOf(inbox.getUID(msg)));
+            
+            // On injecte les noms chiffrés ici !
+            mail.setPath(attachments.toArray(new String[0]));
+            
+            mailList.add(mail);
+            count++;
         }
+        inbox.close(false);
+        store.close();
+    } catch (Exception e) { e.printStackTrace(); }
+    return mailList;
+}
 
-        File out = new File(dir, fileName.replaceAll("[\\\\/:*?\"<>|]", "_"));
+    /**
+     * Récupère un objet Mail complet (Métadonnées + Liste des noms de PJ) sans télécharger le contenu des PJ.
+     */
+    public static Mail getMail(String host, String user, String password, String mailId) {
+        try {
+            Session session = Session.getInstance(getImapProperties(host));
+            Store store = session.getStore("imaps");
+            store.connect(host, user, password);
+            IMAPFolder inbox = (IMAPFolder) store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
 
-        try (InputStream in = p.getInputStream();
-             FileOutputStream fos = new FileOutputStream(out)) {
+            Message msg = inbox.getMessageByUID(Long.parseLong(mailId));
+            String from = (msg.getFrom() != null) ? msg.getFrom()[0].toString() : "Inconnu";
+            String to = (msg.getRecipients(Message.RecipientType.TO) != null) ? msg.getRecipients(Message.RecipientType.TO)[0].toString() : "Inconnu";
+            
+            // On récupère le corps du texte (méthode utilitaire getTextFromPart déjà définie)
+            Mail mail = new Mail(to, from, msg.getSubject(), getTextFromPart(msg));
+            mail.setId(mailId);
 
-            byte[] buffer = new byte[4096];
-            int bytesRead;
+            // Récupération des noms de fichiers (chiffrés ou non)
+            List<String> fileNames = new ArrayList<>();
+            if (msg.getContent() instanceof Multipart) {
+                Multipart mp = (Multipart) msg.getContent();
+                for (int i = 0; i < mp.getCount(); i++) {
+                    BodyPart bp = mp.getBodyPart(i);
+                    if (bp.getFileName() != null) fileNames.add(bp.getFileName());
+                }
+            }
+            mail.setPath(fileNames.toArray(new String[0]));
 
-            while ((bytesRead = in.read(buffer)) != -1) {
-                fos.write(buffer, 0, bytesRead);
+            inbox.close(false);
+            store.close();
+            return mail;
+        } catch (Exception e) { e.printStackTrace(); return null; }
+    }
+
+    /**
+     * Récupère les octets bruts d'une pièce jointe en mémoire.
+     */
+    public static byte[] downloadSpecificFile(String host, String user, String password, String mailId, String fileName) {
+        try {
+            Session session = Session.getInstance(getImapProperties(host));
+            Store store = session.getStore("imaps");
+            store.connect(host, user, password);
+            IMAPFolder inbox = (IMAPFolder) store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
+
+            Message msg = inbox.getMessageByUID(Long.parseLong(mailId));
+            if (msg.getContent() instanceof Multipart) {
+                Multipart mp = (Multipart) msg.getContent();
+                for (int i = 0; i < mp.getCount(); i++) {
+                    BodyPart bp = mp.getBodyPart(i);
+                    if (fileName.equals(bp.getFileName())) {
+                        try (InputStream is = bp.getInputStream();
+                            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
+                            byte[] buf = new byte[8192];
+                            int len;
+                            while ((len = is.read(buf)) != -1) bos.write(buf, 0, len);
+                            return bos.toByteArray(); 
+                        }
+                    }
+                }
+            }
+            inbox.close(false);
+            store.close();
+        } catch (Exception e) { e.printStackTrace(); }
+        return null;
+    }
+
+
+    private static String getTextFromPart(Part p) throws MessagingException, IOException {
+        if (p.isMimeType("text/plain")) return (String) p.getContent();
+        if (p.isMimeType("multipart/*")) {
+            Multipart mp = (Multipart) p.getContent();
+            for (int i = 0; i < mp.getCount(); i++) {
+                String s = getTextFromPart(mp.getBodyPart(i));
+                if (s != null && !s.isEmpty()) return s;
             }
         }
-        attachmentList.add(out.getAbsolutePath());
-
-        // Conversion en tableau pour le Mail
-        mail.setPath(attachmentList.toArray(new String[0]));
+        return "";
     }
-    // Text content
-    else if (p.isMimeType("text/plain") || p.isMimeType("text/html")) {
-
-        String content = (String) p.getContent();
-
-        mail.setMessage(content);
-    }
-    // Other types
-    else {
-        Object o = p.getContent();
-    }
-    return mail;
-}
-   /*
-   * This method would print FROM,TO and SUBJECT of the message
-   */
-   public static void writeEnvelope(Message m, Mail mail) throws Exception {
-      Address[] a;
-
-      // FROM
-      if ((a = m.getFrom()) != null) {
-         mail.setFrom(a[0].toString());
-      }
-
-      // TO
-      if ((a = m.getRecipients(Message.RecipientType.TO)) != null) {
-         mail.setDestinataire(a[0].toString());
-      }
-
-      // SUBJECT
-         mail.setObjet(m.getSubject());
-
-   }
-
-
-   
 }

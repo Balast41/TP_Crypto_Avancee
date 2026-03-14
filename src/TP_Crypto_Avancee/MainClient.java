@@ -44,16 +44,11 @@ import java.util.List;
                 System.out.println("Code validation failed");
                 return;
             }
-
-                String host = "imap.gmail.com";// change 
-                String mailStoreType = "imaps";
-                String senderFilter = "qbalazot@gmail.com";
                 // yqvi txzx srtu csye
-                Mail[] mails = client.getAllMails(host,mailStoreType,client.getEmail(),client.getPassword(),senderFilter,10);
                 // Convertir le tableau en List<Mail>
-                List<Mail> listeMails = new ArrayList<>(Arrays.asList(mails));
                 // Création de l'application et affichage immédiat
-                new AppliMail(listeMails, client);
+                System.out.println("Lancement de l'application...");
+                new AppliMail(client);
     
     }
 }

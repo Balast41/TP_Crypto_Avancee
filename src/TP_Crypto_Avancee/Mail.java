@@ -4,7 +4,7 @@ import java.util.Date;
 import java.util.Arrays;
 
 public class Mail {
-
+    private String id;
     private String destinataire;
     private String from;
     private String username;
@@ -28,6 +28,16 @@ public class Mail {
         this.path = path;
     }
 
+    public Mail(String destinataire, String from, String objet, String message){
+        this.destinataire = destinataire;
+        this.from = from;
+        this.objet = objet;
+        this.message = message;
+        this.path = new String[0];
+        this.username="";
+        this.password="";
+    }
+
         public Mail(String destinataire, String from,
                 String objet, String message, String[] path) {
         this.destinataire = destinataire;
@@ -37,6 +47,12 @@ public class Mail {
         this.path = path;
         this.username="";
         this.password="";
+    }
+    public String getId() {
+        return id;
+    }
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getDestinataire() {

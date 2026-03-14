@@ -5,14 +5,14 @@ import javax.swing.*;
 
 public class AppliMail {
 
-    public AppliMail(List<Mail> listeMails, HttpClient client) {
+    public AppliMail(HttpClient client) {
         // Création de la fenêtre principale
         JFrame frame = new JFrame("Application Mail");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1000, 800);
 
         // Création du panel qui affichera la liste
-        ListeMailsPanel panelListe = new ListeMailsPanel(listeMails);
+        ListeMailsPanel panelListe = new ListeMailsPanel(client);
         frame.add(panelListe, BorderLayout.CENTER);
 
         // Créer et ajouter ToolPanel

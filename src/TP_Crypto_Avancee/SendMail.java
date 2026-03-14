@@ -77,7 +77,7 @@ public class SendMail {
          // Add each attachment as its own body part.
          if (attachmentPaths != null){
             for (int i = 0; i < attachmentPaths.length; i++) {
-               String[] parts = attachmentPaths[i].split("\\\\");
+               String[] parts = attachmentPaths[i].split("\\\\/");
                String filen = parts[parts.length - 1];
                String filename = attachmentPaths[i];
                BodyPart attachmentPart = new MimeBodyPart();

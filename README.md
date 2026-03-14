@@ -25,24 +25,23 @@
 * Récupération de clé IBE, avec sécurité (Code Client + 2FA)
 * Communication à distance géré si infrastructure compatible & Accès à Internet
 * Interface graphique simple, avec 1 page login, 1 page Code et 1 page mail
+* Récupération des paramètres importants (Destinataire, objet, message & nom des fichiers) effectués
+* Décryption des mails instantanés, sans action nécessaire de la part de l'utilisateur
 
 ### Mails
-* Envoi de mail chiffrés, avec 1 clé IBE/AES pour tous (Objet+Message+Fichier) & Inclusion dans le message du mail (U & V)
+* Envoi de mail chiffrés possibles, avec 1 clé IBE/AES pour tous (Objet+Message+Fichier) & Inclusion dans le message du mail (U & V)
 * Récupération de liste de mails avec filtration possible
 * Déchiffrement des mails possibles si les conditions sont remplis (U & V compris dans le message du mail avec la forme)
 * Déchiffrement & Sauvegarde de PJ disponibles
+* Possibilité de choisir entre chiffrer le mail ou non, via un paramètre dans l'envoi
+* Possibilité d'envoi & de recevoir des fichiers directement dans l'application, et de les télécharger, SANS TELECHARGEMENT EN LOCAL ;)
 
 ## A inclure / A vérifier
 
 ### Mails
-* Ajouter la possibilité de choisir entre envoyer un mail chiffré ou non (Paramètres à passer !)
-* Inclure les PJs possibles dans un String[], en incluant les Path
-* Montrer les PJs dans les mails dans l'application
-* Essayer de ne pas télécharger les mails avant (Très important pour des raisons de sécurité !)
 * Ajouter un dynamisme, pouvoir changer la liste des mails affichés (20 mails d'après, autre critère de filtration...)
-
+* Travailler pour améliorer le dynamisme autour de l'application, notamment la récupération de mail s'ils sont chiffrés
 ### Autorité & Client
-* Rajouter une verbose cohérente qui permet de voir les clés...
 * Améliorer les interfaces graphiques, notamment sur la latence, pour avoir un truc cohérent & rapide
 * Voir pour mettre en place du HTTPs avec des certificats, qui renforcerait la sécurité
 * Rajouter des paramètres globaux qui facilitent la mise en place, notamment pour les paths...
