@@ -311,52 +311,22 @@ public static Mail decryptMailMetadata(Mail mail) {
     }
 }
 
-    public static void downloadAndDecryptFile(String host, String user, String pass, String mailId, String encryptedFileName, String destinationPath) {
-        try {
-            // 1. On récupère le mail pour avoir U et V
-            Mail rawMail = FetchingEmail.getMail(host, user, pass, mailId);
-            String[] parts = rawMail.getMessage().split("::KEY::");
-            String[] keyParts = parts[1].split("::SPLIT::");
-            
-            Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(keyParts[0].replace("U:", "").trim()));
-            byte[] V = Base64.getDecoder().decode(keyParts[1].replace("V:", "").trim());
-
-            // 2. On télécharge les octets chiffrés en mémoire (ou fichier temporaire)
-            // Note: On utilise une version de download qui renvoie les bytes ou écrit en temporaire
-            File tempEncFile = File.createTempFile("enc_", ".tmp");
-            FetchingEmail.downloadSpecificFile(host, user, pass, mailId, encryptedFileName);
-
-            // 3. Décryptage du contenu
-            byte[] encryptedBytes = java.nio.file.Files.readAllBytes(tempEncFile.toPath());
-            IBEcipher cipherFichier = new IBEcipher(U, V, encryptedBytes);
-            byte[] fichierClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, cipherFichier);
-
-            // 4. Écriture finale
-            java.nio.file.Files.write(java.nio.file.Paths.get(destinationPath), fichierClair);
-            
-            tempEncFile.delete();
-            System.out.println("Fichier déchiffré et enregistré !");
-            
-        } catch (Exception e) { e.printStackTrace(); }
-    }
-
-    public static Mail[] getAllMails(String host, String user, String pass, String filter, int n, boolean decrypt) {
+    public static Mail[] getAllMails(String host, String user, String pass, String filter, int n) {
+            long start = System.nanoTime();
             List<Mail> mailsFetch = FetchingEmail.fetchLight(host, user, pass, filter, n);
-            
+            long stop = System.nanoTime();
+        System.out.println("Temps d'exécution : " + ((stop - start) / 1_000_000.0) + " ms (fetchLight)");
             Mail[] result = new Mail[mailsFetch.size()];
         // Dans HttpClient.java -> getAllMails
+        start = System.nanoTime();
         for (int i = 0; i < mailsFetch.size(); i++) {
-            Mail m = mailsFetch.get(i);
+            result[i] = mailsFetch.get(i);
             
             // CORRECTION : On instancie l'objet technique au lieu de passer le tableau brut
-            globalTranslationTable.put(m.getId(), new MailTechnicalData(m.getPath(), null, null));
-
-            if (decrypt) {
-                result[i] = decryptMailMetadata(m);
-            } else {
-                result[i] = m;
-            }
+            globalTranslationTable.put(result[i].getId(), new MailTechnicalData(result[i].getPath(), null, null));
         }
+        stop = System.nanoTime();
+        System.out.println("Temps d'exécution : " + ((stop - start) / 1_000_000.0) + " ms (stockage dans la table de traduction)");
             return result;
         }
 

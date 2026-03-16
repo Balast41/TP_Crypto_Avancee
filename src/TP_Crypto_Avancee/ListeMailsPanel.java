@@ -31,7 +31,7 @@ public class ListeMailsPanel extends JPanel {
         // 1. Barre d'outils (Bouton Actualiser)
         JToolBar toolBar = new JToolBar();
         JButton refreshBtn = new JButton("Actualiser");
-        refreshBtn.addActionListener(e -> refreshMails(false,50));
+        refreshBtn.addActionListener(e ->actualiseMail());
         toolBar.add(refreshBtn);
         add(toolBar, BorderLayout.NORTH);
 
@@ -53,9 +53,14 @@ public class ListeMailsPanel extends JPanel {
         add(splitPane, BorderLayout.CENTER);
 
         // Chargement initial
-        refreshMails(true,10);
         new Thread(() -> {
-            refreshMails(true, 50);
+            refreshMails( 10, true);
+        }).start();
+    }
+
+    private void actualiseMail(){
+        new Thread(() -> {
+            refreshMails(10,true);
         }).start();
     }
 
@@ -87,32 +92,45 @@ public class ListeMailsPanel extends JPanel {
         detailPanel.add(attachmentsPanel);
     }
 
-private void refreshMails(boolean forceDecrypt, int number) {
-        // 1. Récupération des mails (on demande n=50)
-        // Note : On passe false à getAllMails pour récupérer les données brutes/légères
-        Mail[] fetchedMails = client.getAllMails(client.getHost(), HttpClient.getEmail(), HttpClient.getPassword(), client.getFilter(), number, forceDecrypt);
-        
-        listModel.clear();
+private void refreshMails(int number, boolean startFunction) {
+    long start = System.nanoTime();
+    Mail[] fetchedMails = client.getAllMails(client.getHost(), HttpClient.getEmail(), HttpClient.getPassword(), client.getFilter(), number);
+    long stop = System.nanoTime();
+    System.out.println("Temps d'exécution : " + ((stop - start) / 1_000_000.0) + " ms (GetMails)");
 
-        if (fetchedMails != null) {
-            for (Mail m : fetchedMails) {
-                String uid = m.getId();
-                Mail mailToDisplay;
+    // On vide la liste sur le thread UI avant de remplir
+    SwingUtilities.invokeLater(() -> listModel.clear());
 
-                // 2. Logique du cache
-                if (!forceDecrypt && mailCache.containsKey(uid)) {
-                    // On utilise la version déjà déchiffrée en mémoire
-                    mailToDisplay = mailCache.get(uid);
-                } else {
-                    // Nouveau mail ou forçage : on déchiffre via le client
-                    mailToDisplay = client.decryptMailMetadata(m);
-                    mailCache.put(uid, mailToDisplay);
-                }
-                
-                listModel.addElement(mailToDisplay);
+    if (fetchedMails != null) {
+        for (Mail m : fetchedMails) {
+            String uid = m.getId();
+            Mail mailToDisplay;
+
+            if (mailCache.containsKey(uid)) {
+                mailToDisplay = mailCache.get(uid);
+            } else {
+                long dStart = System.nanoTime();
+                mailToDisplay = client.decryptMailMetadata(m);
+                long dStop = System.nanoTime();
+                System.out.println("Temps Decrypt : " + ((dStop - dStart) / 1_000_000.0) + " ms");
+                mailCache.put(uid, mailToDisplay);
             }
+
+            // MISE À JOUR UI ICI
+            final Mail finalMail = mailToDisplay;
+            SwingUtilities.invokeLater(() -> {
+                listModel.addElement(finalMail);
+            });
         }
     }
+
+    if (startFunction) {
+        new Thread(() -> {
+            // Un petit délai peut être utile pour laisser l'UI respirer
+            refreshMails(50, false);
+        }).start();
+    }
+}
 
 private void loadMailDetail(Mail selectedHeader) {
     if (selectedHeader == null) return;
@@ -121,7 +139,6 @@ private void loadMailDetail(Mail selectedHeader) {
     Mail fullMail = mailCache.get(selectedHeader.getId());
     
     if (fullMail != null) {
-        // C'est instantané ! Plus besoin de SwingWorker pour le réseau ici.
         displayMail(fullMail);
     }
 }

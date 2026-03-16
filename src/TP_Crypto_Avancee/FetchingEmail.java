@@ -78,41 +78,6 @@ public static List<Mail> fetchLight(String host, String user, String password, S
     return mailList;
 }
 
-    /**
-     * Récupère un objet Mail complet (Métadonnées + Liste des noms de PJ) sans télécharger le contenu des PJ.
-     */
-    public static Mail getMail(String host, String user, String password, String mailId) {
-        try {
-            Session session = Session.getInstance(getImapProperties(host));
-            Store store = session.getStore("imaps");
-            store.connect(host, user, password);
-            IMAPFolder inbox = (IMAPFolder) store.getFolder("INBOX");
-            inbox.open(Folder.READ_ONLY);
-
-            Message msg = inbox.getMessageByUID(Long.parseLong(mailId));
-            String from = (msg.getFrom() != null) ? msg.getFrom()[0].toString() : "Inconnu";
-            String to = (msg.getRecipients(Message.RecipientType.TO) != null) ? msg.getRecipients(Message.RecipientType.TO)[0].toString() : "Inconnu";
-            
-            // On récupère le corps du texte (méthode utilitaire getTextFromPart déjà définie)
-            Mail mail = new Mail(to, from, msg.getSubject(), getTextFromPart(msg));
-            mail.setId(mailId);
-
-            // Récupération des noms de fichiers (chiffrés ou non)
-            List<String> fileNames = new ArrayList<>();
-            if (msg.getContent() instanceof Multipart) {
-                Multipart mp = (Multipart) msg.getContent();
-                for (int i = 0; i < mp.getCount(); i++) {
-                    BodyPart bp = mp.getBodyPart(i);
-                    if (bp.getFileName() != null) fileNames.add(bp.getFileName());
-                }
-            }
-            mail.setPath(fileNames.toArray(new String[0]));
-
-            inbox.close(false);
-            store.close();
-            return mail;
-        } catch (Exception e) { e.printStackTrace(); return null; }
-    }
 
     /**
      * Récupère les octets bruts d'une pièce jointe en mémoire.

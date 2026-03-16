@@ -65,7 +65,7 @@
 - java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:." TP_Crypto_Avancee.HttpServeurAutorite
 
 #### Lancer le client : 
-- java -cp "Path vers jPBC & Jakarta Mail" TP_Crypto_Avancee.HttpServeurAutorite
+- java -cp "Path vers jPBC & Jakarta Mail" TP_Crypto_Avancee.MainClient
 * Exemple : 
 - java -cp ".:lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TP_Crypto_Avancee.MainClient
 
