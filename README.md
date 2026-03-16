@@ -18,6 +18,7 @@
 * Génération de clé IBE, avec sécurité (Code Client + 2FA)
 * Multi-client possible avec tableau dynamique
 * Communication à distance géré si infrastructure compatible
+* Création d'une clé AES avec les 2 codes secrets (client + autorité) (Secret partagé)
 
 ### Client
 * Récupération des PP à distance
@@ -27,6 +28,7 @@
 * Interface graphique simple, avec 1 page login, 1 page Code et 1 page mail
 * Récupération des paramètres importants (Destinataire, objet, message & nom des fichiers) effectués
 * Décryption des mails instantanés, sans action nécessaire de la part de l'utilisateur
+* Création d'une clé AES avec les 2 codes secrets (client + autorité) (Secret partagé)
 
 ### Mails
 * Envoi de mail chiffrés possibles, avec 1 clé IBE/AES pour tous (Objet+Message+Fichier) & Inclusion dans le message du mail (U & V)
@@ -45,7 +47,7 @@
 * Améliorer les interfaces graphiques, notamment sur la latence, pour avoir un truc cohérent & rapide
 * Voir pour mettre en place du HTTPs avec des certificats, qui renforcerait la sécurité
 * Rajouter des paramètres globaux qui facilitent la mise en place, notamment pour les paths...
-
+* Voir pour retirer le RSA quand ca n'est pas nécessaire
 ## Dépendances & Comment lancer
 
 ### packages nécessaires

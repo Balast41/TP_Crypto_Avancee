@@ -2,11 +2,15 @@ package TP_Crypto_Avancee;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import it.unisa.dia.gas.jpbc.Element;
 import it.unisa.dia.gas.jpbc.Pairing;
@@ -107,11 +111,6 @@ public static String encryptRSA(String data, PublicKey publicKey) throws Excepti
     byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
     
     String base64Result = Base64.getEncoder().encodeToString(encryptedBytes);
-    
-    // DEBUG: Print length and first 10 chars
-    System.out.println("[SERVER] Encrypted Base64 Length: " + base64Result.length());
-    System.out.println("[SERVER] Encrypted Base64 Prefix: " + base64Result.substring(0, Math.min(10, base64Result.length())));
-    
     return base64Result;
 }
 
@@ -123,4 +122,67 @@ public static String encryptRSA(String data, PublicKey publicKey) throws Excepti
         byte[] decryptedBytes = cipher.doFinal(decodedBytes);
         return new String(decryptedBytes);
     }
+
+
+    // Signature avec les 2 codes 
+    public static String encryptMessageWithCodes(String code1, String code2, String message) throws Exception {
+
+    // 1. Convertir les codes en bytes
+    byte[] c1 = code1.getBytes(StandardCharsets.UTF_8);
+    byte[] c2 = code2.getBytes(StandardCharsets.UTF_8);
+
+    // 2. XOR symétrique (commutatif)
+    int max = Math.max(c1.length, c2.length);
+    byte[] combined = new byte[max];
+
+    for (int i = 0; i < max; i++) {
+        byte b1 = c1[i % c1.length];
+        byte b2 = c2[i % c2.length];
+        combined[i] = (byte) (b1 ^ b2);
+    }
+
+    // 3. Hash SHA-256 pour dériver une clé propre
+    MessageDigest sha = MessageDigest.getInstance("SHA-256");
+    byte[] hash = sha.digest(combined);
+
+    // 4. AES-128 key (16 bytes)
+    byte[] keyBytes = Arrays.copyOf(hash, 16);
+    SecretKey aesKey = new SecretKeySpec(keyBytes, "AES");
+
+    // 5. Chiffrement AES
+    Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+    cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+
+    byte[] encrypted = cipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
+
+    return Base64.getEncoder().encodeToString(encrypted);
+}
+public static String decryptMessageWithCodes(String code1, String code2, String encryptedMessage) throws Exception {
+
+    byte[] c1 = code1.getBytes(StandardCharsets.UTF_8);
+    byte[] c2 = code2.getBytes(StandardCharsets.UTF_8);
+
+    int max = Math.max(c1.length, c2.length);
+    byte[] combined = new byte[max];
+
+    for (int i = 0; i < max; i++) {
+        byte b1 = c1[i % c1.length];
+        byte b2 = c2[i % c2.length];
+        combined[i] = (byte) (b1 ^ b2);
+    }
+
+    MessageDigest sha = MessageDigest.getInstance("SHA-256");
+    byte[] hash = sha.digest(combined);
+
+    byte[] keyBytes = Arrays.copyOf(hash, 16);
+    SecretKey aesKey = new SecretKeySpec(keyBytes, "AES");
+
+    Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+    cipher.init(Cipher.DECRYPT_MODE, aesKey);
+
+    byte[] decoded = Base64.getDecoder().decode(encryptedMessage);
+    byte[] decrypted = cipher.doFinal(decoded);
+
+    return new String(decrypted, StandardCharsets.UTF_8);
+}
 }

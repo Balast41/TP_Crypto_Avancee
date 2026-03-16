@@ -38,6 +38,8 @@ public class HttpClient {
     // Verbose
     private static boolean verbose=true;
     // Association nom de fichier chiffré <-> nom de fichier clair pour les PJ
+    //Code de l'autorité
+    private static String codeAutorite;
 
 // Dans HttpClient.java (au début de la classe ou en haut des méthodes)
 private static class MailTechnicalData {
@@ -124,7 +126,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
 
     private void Setup(String email, String password){
         try{
-            url_service = new URL("http://127.0.0.1:8080/service");
+            url_service = new URL("http://10.29.124.129:8080/service");
             this.email=email;
             this.password=password;
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
@@ -175,6 +177,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
 
     private static String VerifyCodeAutority(String code){
         try{        
+        codeAutorite=code;
         String encPayload2 = FluxMessagerieIBE.encryptRSA("VERIF_CODE|" + email + "|" + code, authPub);
         byte[] responseRaw = sendPost(url_service, myPubStr + "::SPLIT::" + encPayload2);
         return new String(responseRaw);
@@ -187,17 +190,20 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
 
     private static void decryption_IBE_key(String response){
         try{
-        System.out.println("[CLIENT] Received Base64 Length: " + response.length());
-        System.out.println("[CLIENT] Received Base64 Prefix: " + response.substring(0, Math.min(10, response.length())));
         print("response"+response);
         if (response.equals("CODE_2FA_INVALIDE") || response.equals("CODE_2FA_EXPIRE")) {
             System.out.println("Code de validation 2FA invalide ou expiré. Impossible d'obtenir la clé IBE.");
         }
         else{
-            String[] responsesBlock = FluxMessagerieIBE.decryptRSA(response, myRSA.getPrivateKey()).split("::SPLIT::");
-            if (responsesBlock[1].strip().equals(internCodeIBE)){
-                IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
-                print("IBEKey: " + IBEKey.toString());
+            System.out.println("Avant déchiffrement AES : " + response);
+            String responseAES=FluxMessagerieIBE.decryptMessageWithCodes(codeAutorite, internCodeIBE, response );
+            System.out.println("Message décrypté : "+responseAES);
+            String[] responsesBlock=responseAES.split("::SPLIT::");
+            if (responsesBlock.length>1){
+                if (responsesBlock[1].strip().equals(internCodeIBE)){
+                    IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
+                    print("IBEKey: " + IBEKey.toString());
+                }
             }
         }
                 } catch (Exception e) { 
@@ -322,8 +328,10 @@ public static Mail decryptMailMetadata(Mail mail) {
         for (int i = 0; i < mailsFetch.size(); i++) {
             result[i] = mailsFetch.get(i);
             
-            // CORRECTION : On instancie l'objet technique au lieu de passer le tableau brut
-            globalTranslationTable.put(result[i].getId(), new MailTechnicalData(result[i].getPath(), null, null));
+            if (!globalTranslationTable.containsKey(result[i].getId())) {
+                globalTranslationTable.put(result[i].getId(),
+                    new MailTechnicalData(result[i].getPath(), null, null));
+            }
         }
         stop = System.nanoTime();
         System.out.println("Temps d'exécution : " + ((stop - start) / 1_000_000.0) + " ms (stockage dans la table de traduction)");

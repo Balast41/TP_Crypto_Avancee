@@ -18,7 +18,9 @@ public class ecritureMail extends JFrame {
 
     public ecritureMail(HttpClient client) {
         super("Rédaction de mail");
-
+        ImageIcon logoIcon = new ImageIcon("/home/shila/Documents/CryptoAvancée/TPJavaMail/SMails_logo.png");
+        setIconImage(logoIcon.getImage());
+        
         fichiersAttaches = new ArrayList<>();
         setLayout(new BorderLayout());
 

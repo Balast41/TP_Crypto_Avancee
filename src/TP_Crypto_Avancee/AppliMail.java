@@ -8,6 +8,9 @@ public class AppliMail {
     public AppliMail(HttpClient client) {
         // Création de la fenêtre principale
         JFrame frame = new JFrame("Application Mail");
+        ImageIcon logoIcon = new ImageIcon("/home/shila/Documents/CryptoAvancée/TPJavaMail/SMails_logo.png");
+        frame.setIconImage(logoIcon.getImage());
+        
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1000, 800);
 

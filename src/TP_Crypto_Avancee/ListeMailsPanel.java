@@ -93,42 +93,53 @@ public class ListeMailsPanel extends JPanel {
     }
 
 private void refreshMails(int number, boolean startFunction) {
+
     long start = System.nanoTime();
-    Mail[] fetchedMails = client.getAllMails(client.getHost(), HttpClient.getEmail(), HttpClient.getPassword(), client.getFilter(), number);
+
+    Mail[] fetchedMails = client.getAllMails(
+            client.getHost(),
+            HttpClient.getEmail(),
+            HttpClient.getPassword(),
+            client.getFilter(),
+            number
+    );
+
     long stop = System.nanoTime();
-    System.out.println("Temps d'exécution : " + ((stop - start) / 1_000_000.0) + " ms (GetMails)");
+    System.out.println("Temps GetMails : " + ((stop - start) / 1_000_000.0) + " ms");
 
-    // On vide la liste sur le thread UI avant de remplir
-    SwingUtilities.invokeLater(() -> listModel.clear());
+    if (fetchedMails == null) return;
 
-    if (fetchedMails != null) {
-        for (Mail m : fetchedMails) {
-            String uid = m.getId();
-            Mail mailToDisplay;
+    java.util.List<Mail> mailsToDisplay = new java.util.ArrayList<>();
 
-            if (mailCache.containsKey(uid)) {
-                mailToDisplay = mailCache.get(uid);
-            } else {
-                long dStart = System.nanoTime();
-                mailToDisplay = client.decryptMailMetadata(m);
-                long dStop = System.nanoTime();
-                System.out.println("Temps Decrypt : " + ((dStop - dStart) / 1_000_000.0) + " ms");
-                mailCache.put(uid, mailToDisplay);
-            }
+    for (Mail m : fetchedMails) {
 
-            // MISE À JOUR UI ICI
-            final Mail finalMail = mailToDisplay;
-            SwingUtilities.invokeLater(() -> {
-                listModel.addElement(finalMail);
-            });
+        String uid = m.getId();
+        Mail cached = mailCache.get(uid);
+
+        if (cached == null) {
+            long dStart = System.nanoTime();
+
+            cached = client.decryptMailMetadata(m);
+
+            long dStop = System.nanoTime();
+            System.out.println("Temps Decrypt : " + ((dStop - dStart) / 1_000_000.0) + " ms");
+
+            mailCache.put(uid, cached);
         }
+
+        mailsToDisplay.add(cached);
     }
 
+    SwingUtilities.invokeLater(() -> {
+        listModel.clear();
+
+        for (Mail mail : mailsToDisplay) {
+            listModel.addElement(mail);
+        }
+    });
+
     if (startFunction) {
-        new Thread(() -> {
-            // Un petit délai peut être utile pour laisser l'UI respirer
-            refreshMails(50, false);
-        }).start();
+        new Thread(() -> refreshMails(50, false)).start();
     }
 }
 

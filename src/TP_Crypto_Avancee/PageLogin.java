@@ -1,3 +1,4 @@
+
 package TP_Crypto_Avancee;
 
 import java.awt.*;
@@ -54,36 +55,61 @@ public class PageLogin extends JFrame
             return false;
         }
     
-    public PageLogin(){
+    public PageLogin() {
         super("Connexion");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout());
-        // Panneau pour les champs de connexion
-        Panel loginPanel = new Panel(new GridLayout(2, 2, 5, 5));
+        setLayout(new BorderLayout(500,250));
+
+        // Charger l'icône de la fenêtre
+        ImageIcon logoIcon = new ImageIcon("/home/shila/Documents/CryptoAvancée/TPJavaMail/SMails_logo.png");
+        setIconImage(logoIcon.getImage());
+
+        // Créer un panneau principal avec deux colonnes
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2));
+        
+        
+        // Colonne de gauche : image centrée et redimensionnée
+        JPanel leftPanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Redessiner l'image pour qu'elle s'adapte à la taille du panneau
+                Image image =  new ImageIcon("/home/shila/Documents/CryptoAvancée/TPJavaMail/SMails_logo.png").getImage();
+                int width = getWidth();
+                int height = getHeight();
+                g.drawImage(image, 0, 0, width, height, this);
+            }
+        };
+        leftPanel.setBackground(new Color(250, 250, 250)); // Couleur gris clair (RGB)
+
+        // Colonne de droite : formulaire de connexion
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(new Color(200, 250, 250)); // Couleur gris clair (RGB)
+
+        Panel loginPanel = new Panel(new GridLayout(5, 5, 5, 5));
 
         // Champ pour l'email
         loginPanel.add(new Label("Email :"));
-        emailField = new JTextField(20);
+        emailField = new JTextField(30);
+        emailField.setPreferredSize(new Dimension(5, 5));
         loginPanel.add(emailField);
 
         // Champ pour le mot de passe
         loginPanel.add(new Label("Mot de passe :"));
-        mdpField = new JPasswordField(20);
+        mdpField = new JPasswordField(30);
         loginPanel.add(mdpField);
 
-           add(loginPanel, BorderLayout.CENTER);
+        rightPanel.add(loginPanel, BorderLayout.CENTER);
 
         // Bouton "Envoyer"
         JButton envoyerButton = new JButton("Envoyer");
         envoyerButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String email = emailField.getText();
-                String mdp = new String(mdpField.getPassword()); // Récupère le mot de passe
+                String mdp = new String(mdpField.getPassword());
 
-                // Ici, tu peux ajouter la logique de vérification des identifiants
-                // Par exemple, ouvrir la fenêtre de rédaction de mail si la connexion réussit
                 if (checkConnection(email, mdp)) {
-                    user= new User(email,mdp);
+                    user = new User(email, mdp);
                     dispose();
                 } else {
                     JOptionPane.showMessageDialog(null, "Email ou mot de passe incorrect !", "Erreur", JOptionPane.ERROR_MESSAGE);
@@ -91,9 +117,21 @@ public class PageLogin extends JFrame
             }
         });
 
-        add(envoyerButton, BorderLayout.SOUTH);
-        setSize(400, 150); // width x height in pixels
-        setLocationRelativeTo(null); // center it
+        rightPanel.add(envoyerButton, BorderLayout.SOUTH);
+
+        // Ajouter les deux colonnes au panneau principal
+        mainPanel.add(leftPanel);
+        mainPanel.add(rightPanel);
+
+        // Ajouter le panneau principal à la fenêtre
+        add(mainPanel, BorderLayout.CENTER);
+
+        setSize(600, 200); // Augmenter la largeur pour les deux colonnes
+        setLocationRelativeTo(null); // Centrer la fenêtre
     }
+
+
     }
+
+
 

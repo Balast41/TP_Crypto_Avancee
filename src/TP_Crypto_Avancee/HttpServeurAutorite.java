@@ -50,7 +50,7 @@ public class HttpServeurAutorite {
             print("Serveur prêt sur le port 8080...");
             print("==================================================");
 
-            HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            HttpServer server = HttpServer.create(new InetSocketAddress("10.29.124.129",8080), 0);
             server.createContext("/service", he -> {
                 
                 try {
@@ -102,7 +102,7 @@ public class HttpServeurAutorite {
                             index=tableau_users.size();
                         }
                         if (!userExists) {
-                            tableau_users.add(new ArrayList<>(List.of(cmdParts[1], codeClient, commande, "", "", "", parts[0])));
+                            tableau_users.add(new ArrayList<>(List.of(cmdParts[1], codeClient, commande, "", "", "", parts[0]))); /*email, codeClient, commande, codeverif, experitationCode, CleIBE, clientPubKeyStr*/
                         }
                         
 
@@ -126,14 +126,14 @@ public class HttpServeurAutorite {
 
                                 print("Action : Génération de la clé IBE pour " + email);
                                 print("RSA Public Key du client utilisée pour le chiffrement (Base64) : " + tableau_users.get(index).get(6).substring(0, 50) + "...");
-
+                                
                                 tableau_users.get(index).set(5, Base64.getEncoder().encodeToString(FluxMessagerieIBE.etape6_Autorite_GenererClePriveeClient(pairing, msk, email).getSk().toBytes()));
                                 
                                 print("[CRYPTO] Clé IBE brute (Base64) : " + tableau_users.get(index).get(5).substring(0, 30) + "...");
                                 
                                 // CHIFFREMENT DE LA RÉPONSE
-                                responseStr = FluxMessagerieIBE.encryptRSA(tableau_users.get(index).get(5)+"::SPLIT::"+tableau_users.get(index).get(1), decodeKey(tableau_users.get(index).get(6)));
-                                print("[CRYPTO] Clé IBE chiffrée avec la clé client : " + responseStr + "...");
+                                responseStr=FluxMessagerieIBE.encryptMessageWithCodes(codeClient, tableau_users.get(index).get(3), tableau_users.get(index).get(5)+"::SPLIT::"+tableau_users.get(index).get(1));
+                                System.out.println("Chiffré avec AES : "+ responseStr);
                                 tableau_users.remove(index);
 
                             } else {
