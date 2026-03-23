@@ -13,9 +13,6 @@ import java.util.Scanner;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-//Compilation : javac -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*" TPJavaMail/TP_Crypto_Avancee/src/TP_Crypto_Avancee/*.java
-//Execution : java -cp "lib/jpbc-2.0.0/jars/*:lib/JakartaMail/*:TPJavaMail/TP_Crypto_Avancee/src" TP_Crypto_Avancee.HttpClient
-
 public class HttpClient {
     //Parameter to define by the client when creating the class
     private static String email;
@@ -54,16 +51,13 @@ private static class MailTechnicalData {
     }
 }
 
+    // Table de hachage permettant de conserver les métadonnées de déchiffrement entre la vue liste et le téléchargement
     private static Map<String, MailTechnicalData> globalTranslationTable = new HashMap<>();
 
-
-
-
     public String getHost() { return "imap.gmail.com"; }
-public String getUser() { return getEmail(); } // Utilise ton getEmail()
-public String getPass() { return getPassword(); } // Utilise ton getPassword()
-public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou mets getEmail()
-
+    public String getUser() { return getEmail(); } // Utilise ton getEmail()
+    public String getPass() { return getPassword(); } // Utilise ton getPassword()
+    public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou mets getEmail()
 
     public static String getEmail() {
         return email;
@@ -73,6 +67,9 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         return password;
     }
 
+    /**
+     * Génération d'un OTP local pour l'authentification forte auprès de l'autorité
+     */
     private static String PrivateVerificationCode() {
         Random random = new Random();
         int chiffre = random.nextInt(1000000); // Génère un entier entre 0 et 999999
@@ -91,6 +88,9 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         System.out.println("Asking the IBE Key... Done.");
     }
 
+    /**
+     * Valide le code 2FA reçu. Si valide, procède au déchiffrement de la clé d'identité IBE
+     */
     public String VerifyingTheCode(String code){
         String response= VerifyCodeAutority(code);
         if (response.equals("CODE_2FA_INVALIDE")){
@@ -105,7 +105,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         return "VRAI";
     }
 
-
+    // Gestion des requêtes POST brutes vers l'autorité
     private static byte[] sendPost(URL url, String data) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
@@ -124,15 +124,15 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         }
     }
 
+    /**
+     * Initialisation des paramètres de connexion et du couplage (Pairing)
+     */
     private void Setup(String email, String password){
         try{
             url_service = new URL("http://10.29.124.129:8080/service");
             this.email=email;
             this.password=password;
             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
-            myRSA = FluxMessagerieIBE.generateRSAKeyPair();
-            myPubStr = Base64.getEncoder().encodeToString(myRSA.getPublicKey().getEncoded());
-            print("myPubStr: " + myPubStr);
             internCodeIBE=PrivateVerificationCode();
             } 
             catch (Exception e) { 
@@ -141,7 +141,9 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
             }
     }
 
-
+    /**
+     * Récupération des paramètres publics P et Ppub de l'autorité pour les opérations IBE
+     */
     private static void RetrievePP(){
         try{
             String PPText= new String(sendPost(url_service,"SEND_PP"));
@@ -154,6 +156,9 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         }
     }
     
+    /**
+     * Récupération de la clé RSA du serveur pour le chiffrement asymétrique des échanges initiaux
+     */
     private static void RetrieveRSA(){
         try{
         String RSAKeyStr=new String(sendPost(url_service, "REQ_AUTH_RSA"));
@@ -165,10 +170,13 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         }
     }
 
+    /**
+     * Envoie une requête chiffrée en RSA pour demander la génération de la clé privée IBE
+     */
     private static void Asking_IBE_Key(){
         try{
-        String encPayload1 = FluxMessagerieIBE.encryptRSA("DEMANDE_CLE|" + email, authPub);
-        String resp1 = new String(sendPost(url_service, myPubStr + "::SPLIT::" + encPayload1+"::SPLIT::"+internCodeIBE));
+        String encPayload1 = FluxMessagerieIBE.encryptRSA("DEMANDE_CLE|" + email+"::SPLIT::"+internCodeIBE, authPub);
+        String resp1 = new String(sendPost(url_service, "::ENCRYPTED::"+encPayload1));
                 } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
             e.printStackTrace();
@@ -179,7 +187,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         try{        
         codeAutorite=code;
         String encPayload2 = FluxMessagerieIBE.encryptRSA("VERIF_CODE|" + email + "|" + code, authPub);
-        byte[] responseRaw = sendPost(url_service, myPubStr + "::SPLIT::" + encPayload2);
+        byte[] responseRaw = sendPost(url_service, "::ENCRYPTED::"+encPayload2);
         return new String(responseRaw);
         } catch (Exception e) { 
             System.err.println("\n[ERREUR] " + e.getMessage());
@@ -188,6 +196,9 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         }
     }
 
+    /**
+     * Déchiffre la clé IBE reçue par le serveur en utilisant le protocole AES hybride
+     */
     private static void decryption_IBE_key(String response){
         try{
         print("response"+response);
@@ -196,10 +207,12 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         }
         else{
             System.out.println("Avant déchiffrement AES : " + response);
+            // Déchiffrement symétrique basé sur le code autorité et le code interne
             String responseAES=FluxMessagerieIBE.decryptMessageWithCodes(codeAutorite, internCodeIBE, response );
             System.out.println("Message décrypté : "+responseAES);
             String[] responsesBlock=responseAES.split("::SPLIT::");
             if (responsesBlock.length>1){
+                // Vérification de l'intégrité via le code interne avant stockage de la clé G1
                 if (responsesBlock[1].strip().equals(internCodeIBE)){
                     IBEKey= pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(responsesBlock[0].strip()));
                     print("IBEKey: " + IBEKey.toString());
@@ -225,18 +238,27 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         return false;  
     }
 
+    /**
+     * Chiffre l'intégralité d'un mail (Corps, Objet, PJ) via le schéma IBE d'Ident.
+     */
     public static boolean sendingAMailCrypted(Mail mail){
         try{
                 print(" On envoie des données");
+                // Génération des paramètres de chiffrement (Clé de session AES dérivée du couplage)
                 IBEcipher AESKey = IBEBasicIdent.IBEGlobalKey(AutorityPP,AutorityP, mail.getDestinataire());
                 print("AESKey:"+AESKey.getAescipher().toString());
+
+                // Chiffrement des données textuelles
                 IBEcipher encryptedObject =
                     IBEBasicIdent.IBEencryption(AESKey,mail.getObjet().getBytes());
                 IBEcipher encryptedMessage =
                     IBEBasicIdent.IBEencryption(AESKey,mail.getMessage().getBytes());
+
                 print("Message avant : "+ mail.getMessage() + " \n Message après : " + encryptedMessage.getAescipher().toString());
                 String serializedCipher = IBECipherUtils.serializeIBECipher(encryptedMessage);
                 print("SerializedCipher:"+serializedCipher);
+
+                // Chiffrement individuel des fichiers joints
                 String[] pathArray= mail.getPath();
                 for(int i=0;i<mail.getPath().length;i++){
                     byte[] fichier = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(pathArray[i]));
@@ -246,6 +268,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
                     byte[] encryptedBytes = encryptedFile.getAescipher();
 
                     // Écriture binaire directe, sans Base64
+                    // On chiffre également le nom du fichier pour la confidentialité des métadonnées
                     String[] parts = pathArray[i].split("[\\\\/]");
                     String filen = Base64.getEncoder().encodeToString(
                             IBEBasicIdent.IBEencryption(AESKey,parts[parts.length - 1].getBytes()).getAescipher()
@@ -254,6 +277,7 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
                     pathArray[i] = filen + ".enc";
                 }
 
+                // Préparation du payload final : Message chiffré + Paramètres U et V pour le destinataire
                 String ObjetEncrypte = Base64.getEncoder().encodeToString(encryptedObject.getAescipher());
                 String MessageEncrypte = Base64.getEncoder().encodeToString(encryptedMessage.getAescipher());
                 mail.setObjet(ObjetEncrypte);
@@ -272,11 +296,15 @@ public String getFilter() { return ""; } // Laisse vide pour tout recevoir ou me
         return false;
     }
 
+/**
+ * Extrait les paramètres IBE du corps du message et déchiffre le contenu.
+ */
 public static Mail decryptMailMetadata(Mail mail) {
     try {
         String content = mail.getMessage();
         if (!content.contains("::KEY::")) return mail;
 
+        // Parsing des délimiteurs pour isoler le cipher-texte et les clés de couplage
         String[] parts = content.split("::KEY::");
         String encryptedMessageB64 = parts[0].trim();
         String[] keyParts = parts[1].split("::SPLIT::");
@@ -285,22 +313,23 @@ public static Mail decryptMailMetadata(Mail mail) {
         String vB64 = keyParts[1].replace("V:", "").trim();
 
         // --- AJOUT : On sauvegarde les noms bruts et les clés avant déchiffrement ---
+        // Nécessaire pour faire le lien lors du téléchargement d'une pièce jointe spécifique
         globalTranslationTable.put(mail.getId(), new MailTechnicalData(mail.getPath(), uB64, vB64));
 
         Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(uB64));
         byte[] V = Base64.getDecoder().decode(vB64);
 
-        // 1. Décrypter le Message
+        // 1. Décrypter le Message (Corps du mail)
         byte[] msgClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
                         new IBEcipher(U, V, Base64.getDecoder().decode(encryptedMessageB64)));
         mail.setMessage(new String(msgClair));
 
-        // 2. Décrypter l'Objet
+        // 2. Décrypter l'Objet (Sujet du mail)
         byte[] objClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
                         new IBEcipher(U, V, Base64.getDecoder().decode(mail.getObjet())));
         mail.setObjet(new String(objClair));
 
-        // 3. Décrypter les NOMS des fichiers
+        // 3. Décrypter les NOMS des fichiers pour l'affichage utilisateur
         String[] encPaths = mail.getPath();
         String[] decNames = new String[encPaths.length];
         for (int i = 0; i < encPaths.length; i++) {
@@ -317,6 +346,9 @@ public static Mail decryptMailMetadata(Mail mail) {
     }
 }
 
+    /**
+     * Récupère les mails depuis le serveur IMAP et initialise la table de traduction technique
+     */
     public static Mail[] getAllMails(String host, String user, String pass, String filter, int n) {
             long start = System.nanoTime();
             List<Mail> mailsFetch = FetchingEmail.fetchLight(host, user, pass, filter, n);
@@ -338,6 +370,9 @@ public static Mail decryptMailMetadata(Mail mail) {
             return result;
         }
 
+/**
+ * Télécharge une pièce jointe, retrouve son nom chiffré sur le serveur, puis la déchiffre localement.
+ */
 public void downloadFile(String host, String user, String pass, Mail currentMail, String displayName, String destPath) {
     try {
         String mailId = currentMail.getId();
@@ -346,6 +381,7 @@ public void downloadFile(String host, String user, String pass, Mail currentMail
 
         if (techData != null) {
             String[] displayList = currentMail.getPath();
+            // Résolution : mapping du nom affiché (clair) vers le nom réel (chiffré Base64)
             for (int i = 0; i < displayList.length; i++) {
                 if (displayList[i].equals(displayName)) {
                     realNameOnServer = techData.encryptedNames[i];
@@ -363,6 +399,7 @@ public void downloadFile(String host, String user, String pass, Mail currentMail
                 Element U = pairing.getG1().newElementFromBytes(Base64.getDecoder().decode(techData.uB64));
                 byte[] V = Base64.getDecoder().decode(techData.vB64);
                 
+                // Déchiffrement IBE binaire
                 byte[] fichierClair = IBEBasicIdent.IBEdecryption(pairing, AutorityP, AutorityPP, IBEKey, 
                                     new IBEcipher(U, V, data));
                 java.nio.file.Files.write(java.nio.file.Paths.get(destPath), fichierClair);

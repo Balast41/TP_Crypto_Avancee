@@ -56,6 +56,27 @@
 
 ### Commandes de lancement - Linux
 
+#### Modifier le fichier : 
+- HttpClient - Ligne 135 :             url_service = new URL("http://10.29.124.129:8080/service");
+
+Il faut mettre son IP publique & son port ouvert par l'autorité
+
+- HttpClient - Ligne 138 :             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
+
+Il faut inclure son path
+
+-IBEBasicIdent - Ligne 65 :         Pairing pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
+        
+Il faut inclure son path
+
+- HttpServeurAutorite - Ligne 52 :             pairing = it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory.getPairing("/home/shila/Documents/CryptoAvancée/lib/jpbc-2.0.0/params/curves/a.properties");
+
+Il faut inclure son path
+
+- HttpServeurAutorite - Ligne 66 :             HttpServer server = HttpServer.create(new InetSocketAddress("10.29.124.129",8080), 0);
+
+Il faut mettre son IP publique et le port souhaité
+
 #### Compiler le fichier :
 - javac -cp "Path vers jPBC & Jakarta Mail" -d . PathVers/src/TP_Crypto_Avancee/*.java
 * Exemple : 
